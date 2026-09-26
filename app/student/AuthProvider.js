@@ -3,15 +3,16 @@
 // app/student/AuthProvider.js
 // O'quvchi paneli uchun auth guard: faqat kirgan va role === "student"
 // bo'lgan foydalanuvchilar app/student/** ichidagi sahifalarni ko'ra oladi.
-// Joriy foydalanuvchi (Firebase Auth user + Firestore users hujjati) va
-// bugungi qolgan jonlar soni Context orqali pastki sahifalarga uzatiladi
-// (jonlar hujjati realtime kuzatiladi — test sahifasida jon kamaytirilganda
-// StudentHeader'dagi ko'rsatkich darhol yangilanishi uchun).
+// Joriy foydalanuvchi (Firebase Auth user) Context orqali pastki
+// sahifalarga uzatiladi. users hujjati (userData) VA bugungi qolgan jonlar
+// soni REALTIME kuzatiladi (onSnapshot) — shuning uchun, masalan, test
+// tugab "umumiy ball" yangilanganda yoki jon kamayganda, boshqa sahifaga
+// o'tilganda ham (sahifani qayta yuklamasdan) darhol yangi qiymat ko'rinadi.
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { KUNLIK_JON_SONI, jonHujjatId, jonSanasi } from "@/lib/heartsHelpers";
 
@@ -33,25 +34,29 @@ export default function StudentAuthProvider({ children }) {
   const [qolganJon, setQolganJon] = useState(KUNLIK_JON_SONI);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         router.replace("/login");
         return;
       }
-
-      const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-      if (!snap.exists() || snap.data().role !== "student") {
-        router.replace("/login");
-        return;
-      }
-
       setUser(firebaseUser);
-      setUserData(snap.data());
-      setStatus("ready");
     });
 
     return unsubscribe;
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (!snap.exists() || snap.data().role !== "student") {
+        router.replace("/login");
+        return;
+      }
+      setUserData(snap.data());
+      setStatus("ready");
+    });
+    return unsubscribe;
+  }, [user, router]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -64,11 +69,10 @@ export default function StudentAuthProvider({ children }) {
     return unsubscribe;
   }, [user]);
 
-  async function refreshUserData() {
-    if (!user) return;
-    const snap = await getDoc(doc(db, "users", user.uid));
-    if (snap.exists()) setUserData(snap.data());
-  }
+  // userData endi realtime (onSnapshot) kuzatilgani uchun qo'lda qayta
+  // o'qishga ehtiyoj yo'q — funksiya faqat eski chaqiruvlar bilan moslik
+  // uchun (hech narsa qilmaydi, xato bermaydi) saqlab qolindi.
+  async function refreshUserData() {}
 
   async function logout() {
     await signOut(auth);
