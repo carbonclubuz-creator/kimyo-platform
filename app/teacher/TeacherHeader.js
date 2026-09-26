@@ -1,8 +1,7 @@
 "use client";
 
 // app/teacher/TeacherHeader.js
-// Ustoz paneli yuqori paneli: ism-familiya va "Chiqish" tugmasi.
-// To'liq navigatsiya (Sinflar / Akkount va h.k.) keyingi promtda qo'shiladi.
+// Ustoz paneli yuqori paneli: ism-familiya, "Akkount" havolasi va "Chiqish" tugmasi.
 
 import Link from "next/link";
 import { useTeacherAuth } from "@/app/teacher/AuthProvider";
@@ -19,6 +18,12 @@ export default function TeacherHeader() {
         <span className="text-sm text-gray-600">
           {userData?.ism} {userData?.familiya}
         </span>
+        <Link
+          href="/teacher/account"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          Akkount
+        </Link>
         <button
           type="button"
           onClick={logout}

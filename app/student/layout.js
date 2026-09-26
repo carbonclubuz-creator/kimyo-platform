@@ -1,6 +1,18 @@
-// TODO (keyingi promt): auth guard — faqat role === "student" bo'lganlar kira oladi,
-// jonlar (hearts) ko'rsatkichi shu yerga qo'shiladi.
+// app/student/layout.js
+// O'quvchi paneli uchun umumiy qobiq: auth guard (StudentAuthProvider — faqat
+// role === "student" bo'lganlar kira oladi) + yuqori panel (jonlar ko'rsatkichi
+// shu yerda, StudentHeader ichida).
+
+import StudentAuthProvider from "./AuthProvider";
+import StudentHeader from "./StudentHeader";
 
 export default function StudentLayout({ children }) {
-  return <div className="min-h-screen">{children}</div>;
+  return (
+    <StudentAuthProvider>
+      <div className="min-h-screen bg-gray-50">
+        <StudentHeader />
+        {children}
+      </div>
+    </StudentAuthProvider>
+  );
 }
