@@ -208,6 +208,15 @@ export default function StudentTestPage({ params }) {
         togriSoni: yangiTogriSoni,
         ...(oxirgimi ? { holati: "tugallangan" } : {}),
       });
+      // Test tugagan bo'lsa — shu urinishdagi to'g'ri javoblar soni
+      // "umumiy ball"ga qo'shiladi (0-QISM 11-band: Akkountda ko'rinadigan
+      // umumiy ball). Qayta ishlangan testlar ham hisoblanadi — mashq
+      // qilishni rag'batlantiradi.
+      if (oxirgimi) {
+        await updateDoc(doc(db, "users", user.uid), {
+          umumiyBali: increment(yangiTogriSoni),
+        });
+      }
     } catch {
       setPhase("error");
       return;
