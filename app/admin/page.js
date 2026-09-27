@@ -9,11 +9,6 @@
 // foydalanuvchilar. Bittasini tanlasa — maxfiySoz ko'rinadi (admin buni
 // Telegram orqali aytilgan javob bilan qo'lda solishtiradi) va "Yangi parol
 // yarat" tugmasi bilan parol tiklanadi.
-//
-// MVP eslatmasi: mustaqil o'quvchi ro'yxatdan o'tish formasida maxfiySoz
-// so'ralmaydi (0-QISM sxemasida bu maydon "faqat teacher uchun" deb
-// belgilangan) — shuning uchun mustaqil o'quvchilar uchun bu maydon
-// "belgilanmagan" bo'lib ko'rinadi. Bu promtlar to'plamidagi spec bo'shlig'i.
 
 import { useEffect, useState } from "react";
 import CredentialsCard from "@/components/CredentialsCard";

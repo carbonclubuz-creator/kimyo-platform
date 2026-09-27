@@ -25,6 +25,7 @@ export default function StudentRegisterPage() {
   const [familiya, setFamiliya] = useState("");
   const [viloyat, setViloyat] = useState("");
   const [tuman, setTuman] = useState("");
+  const [maxfiySoz, setMaxfiySoz] = useState("");
 
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
@@ -42,6 +43,12 @@ export default function StudentRegisterPage() {
 
     if (!viloyat) nextErrors.viloyat = "Viloyatni tanlang";
     if (!tuman.trim()) nextErrors.tuman = "Tumanni kiriting";
+
+    if (!maxfiySoz.trim()) {
+      nextErrors.maxfiySoz = "Maxfiy so'zni kiriting";
+    } else if (maxfiySoz.trim().length < 4) {
+      nextErrors.maxfiySoz = "Kamida 4 ta belgidan iborat bo'lsin";
+    }
 
     setErrors(nextErrors);
     return { valid: Object.keys(nextErrors).length === 0, ismCheck, familiyaCheck };
@@ -75,6 +82,7 @@ export default function StudentRegisterPage() {
         loginLower: login.toLowerCase(),
         viloyat,
         tuman: tuman.trim(),
+        maxfiySoz: maxfiySoz.trim(),
         classId: null,
         umumiyBali: 0,
         createdAt: serverTimestamp(),
@@ -159,6 +167,17 @@ export default function StudentRegisterPage() {
             className="w-full rounded-xl2 border border-gray-300 px-4 py-3"
           />
           {errors.tuman && <p className="mt-1 text-sm text-red-500">{errors.tuman}</p>}
+        </div>
+
+        <div>
+          <input
+            type="text"
+            placeholder="Maxfiy so'z (parolni tiklash uchun)"
+            value={maxfiySoz}
+            onChange={(e) => setMaxfiySoz(e.target.value)}
+            className="w-full rounded-xl2 border border-gray-300 px-4 py-3"
+          />
+          {errors.maxfiySoz && <p className="mt-1 text-sm text-red-500">{errors.maxfiySoz}</p>}
         </div>
 
         {formError && <p className="text-sm text-red-500">{formError}</p>}

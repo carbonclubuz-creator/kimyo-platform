@@ -22,6 +22,7 @@ export default function TeacherAccountPage() {
   const [ism, setIsm] = useState("");
   const [familiya, setFamiliya] = useState("");
   const [viloyat, setViloyat] = useState(VILOYATLAR[0]);
+  const [tuman, setTuman] = useState("");
   const [xato, setXato] = useState("");
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
 
@@ -50,6 +51,7 @@ export default function TeacherAccountPage() {
     setIsm(userData?.ism || "");
     setFamiliya(userData?.familiya || "");
     setViloyat(userData?.viloyat || VILOYATLAR[0]);
+    setTuman(userData?.tuman || "");
     setXato("");
     setTahrirlash(true);
   }
@@ -75,6 +77,7 @@ export default function TeacherAccountPage() {
         ism: ismNatija.value,
         familiya: familiyaNatija.value,
         viloyat,
+        tuman: tuman.trim(),
       });
       await refreshUserData();
       setTahrirlash(false);
@@ -101,6 +104,9 @@ export default function TeacherAccountPage() {
 
           <p className="text-sm text-gray-400">Viloyat</p>
           <p className="mb-4 text-lg font-semibold">{userData?.viloyat}</p>
+
+          <p className="text-sm text-gray-400">Tuman</p>
+          <p className="mb-4 text-lg font-semibold">{userData?.tuman}</p>
 
           <div className="mb-4 flex gap-6">
             <div>
@@ -166,6 +172,14 @@ export default function TeacherAccountPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-600">Tuman</label>
+            <input
+              value={tuman}
+              onChange={(e) => setTuman(e.target.value)}
+              className="w-full rounded-xl2 border border-gray-300 px-3 py-2"
+            />
           </div>
 
           {xato && <p className="text-sm text-red-500">{xato}</p>}
