@@ -1,155 +1,70 @@
 "use client";
 
 // app/student/test/[mavzuId]/page.js
-// Test ishlash sahifasi (0-QISM 7-10-band):
-// - Agar bugungi jon 0 bo'lsa VA shu mavzuda "jarayonda" urinish yo'q bo'lsa
-//   — test boshlanmaydi, xabar ko'rsatiladi.
-// - Agar "jarayonda" (tugallanmagan) urinish bo'lsa — davom ettirish taklif
-//   qilinadi, jon qayta olinmaydi.
-// - Aks holda: savollar va har savolning 4 varianti tasodifiy tartibda
-//   olinadi, yangi urinish yoziladi, 1 ta jon kamayadi.
-// - Har savolga javob berilgach darhol to'g'ri/noto'g'ri rangda ko'rsatiladi;
-//   "Keyingisi" faqat javob berilgach ko'rinadi. Har javobdan keyin urinish
-//   hujjati Firestore'da yangilanadi (shuning uchun yarim yo'lda chiqib
-//   ketilsa ham progress saqlanadi).
-// - Oxirgi savoldan keyin natija ekrani: "X/Y to'g'ri (Z%)".
+// Test ishlash sahifasi — endi Firestore bilan to'g'ridan-to'g'ri
+// gaplashmaydi, faqat /api/student/test/start va /api/student/test/answer
+// bilan ishlaydi. MUHIM: server hech qachon to'g'ri javobni oldindan
+// yubormaydi — faqat javob berilgandan KEYIN shu savol uchun natija keladi
+// (0-QISM 7-10-band talablari saqlanadi, endi xavfsiz tarzda).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useStudentAuth } from "@/app/student/AuthProvider";
-import { KUNLIK_JON_SONI, jonHujjatId, jonSanasi } from "@/lib/heartsHelpers";
-
-/** Fisher-Yates aralashtirish — massivni o'zgartirmaydi, yangisini qaytaradi. */
-function aralashtir(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export default function StudentTestPage({ params }) {
   const { mavzuId } = params;
-  const { user } = useStudentAuth();
+  const { user, refreshHearts } = useStudentAuth();
 
   // "checking" | "no-hearts" | "resume-prompt" | "empty" | "test" | "result" | "error"
   const [phase, setPhase] = useState("checking");
-  const [mavzu, setMavzu] = useState(null);
+
   const [urinishId, setUrinishId] = useState(null);
-  const [savolTartibi, setSavolTartibi] = useState([]); // savol ID'lari, tasodifiy tartibda
-  const [variantTartiblari, setVariantTartiblari] = useState({}); // { [savolId]: [origIdx,...] }
-  const [savollarMap, setSavollarMap] = useState({}); // { [savolId]: savolHujjati }
-  const [javoblar, setJavoblar] = useState([]); // har savol uchun TANLANGAN ASL indeks (0-3)
+  const [savollar, setSavollar] = useState([]); // [{savolId, matn, variantlar}]
+  const [joriyIndex, setJoriyIndex] = useState(0);
   const [togriSoni, setTogriSoni] = useState(0);
-  const [tanlangan, setTanlangan] = useState(null); // joriy savolda bosilgan displey-indeks
-  const [pendingUrinish, setPendingUrinish] = useState(null); // resume-prompt uchun
+  const [jamiSavol, setJamiSavol] = useState(0);
+  const [wasResumed, setWasResumed] = useState(false);
+
+  const [tanlangan, setTanlangan] = useState(null); // bosilgan displey-indeks
+  const [natija, setNatija] = useState(null); // { togrimi, togriDisplayIndex } — javob yuborilgach
+  const [yuborilmoqda, setYuborilmoqda] = useState(false);
 
   useEffect(() => {
     let bekor = false;
 
     async function boshlash() {
       try {
-        const mavzuSnap = await getDoc(doc(db, "mavzular", mavzuId));
+        const idToken = await user.getIdToken();
+        const res = await fetch("/api/student/test/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ mavzuId }),
+        });
+        const data = await res.json().catch(() => ({}));
         if (bekor) return;
-        if (!mavzuSnap.exists()) {
+
+        if (!res.ok) {
           setPhase("error");
           return;
         }
-        setMavzu({ id: mavzuSnap.id, ...mavzuSnap.data() });
+        if (!data.ok) {
+          setPhase(data.reason === "no-hearts" ? "no-hearts" : "empty");
+          return;
+        }
 
-        // Composite index shart bo'lmasligi uchun faqat studentId bo'yicha
-        // so'raymiz, qolganini client tarafda filtrlaymiz.
-        const urinishlarSnap = await getDocs(
-          query(collection(db, "urinishlar"), where("studentId", "==", user.uid))
-        );
-        const jarayonda = urinishlarSnap.docs.find((d) => {
-          const u = d.data();
-          return u.mavzuId === mavzuId && u.holati === "jarayonda";
-        });
+        setUrinishId(data.urinishId);
+        setSavollar(data.savollar);
+        setJoriyIndex(data.joriyIndex);
+        setTogriSoni(data.togriSoni);
+        setJamiSavol(data.jamiSavol);
+        setWasResumed(data.resumed);
 
-        if (bekor) return;
-
-        if (jarayonda) {
-          setPendingUrinish({ id: jarayonda.id, ...jarayonda.data() });
+        if (data.resumed) {
           setPhase("resume-prompt");
-          return;
+        } else {
+          refreshHearts(); // 1 jon kamaydi — headerdagi ko'rsatkichni yangilaymiz
+          setPhase("test");
         }
-
-        // StudentHeader'dagi Context qiymati (onSnapshot) biroz kechikishi
-        // mumkin bo'lgani uchun, kritik qaror (jon bormi?) uchun to'g'ridan-to'g'ri
-        // Firestore'dan yangi qiymat o'qiladi.
-        const sanaTekshir = jonSanasi();
-        const jonSnap = await getDoc(doc(db, "jonlar", jonHujjatId(user.uid, sanaTekshir)));
-        const ishlatilgan = jonSnap.exists() ? jonSnap.data().ishlatilgan || 0 : 0;
-        if (bekor) return;
-        if (KUNLIK_JON_SONI - ishlatilgan <= 0) {
-          setPhase("no-hearts");
-          return;
-        }
-
-        const savollarSnap = await getDocs(
-          query(collection(db, "savollar"), where("mavzuId", "==", mavzuId))
-        );
-        if (bekor) return;
-
-        if (savollarSnap.empty) {
-          setPhase("empty");
-          return;
-        }
-
-        const savollar = savollarSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const tartib = aralashtir(savollar.map((s) => s.id));
-        const variantlar = {};
-        const map = {};
-        savollar.forEach((s) => {
-          variantlar[s.id] = aralashtir([0, 1, 2, 3]);
-          map[s.id] = s;
-        });
-
-        const yangiUrinish = {
-          studentId: user.uid,
-          mavzuId,
-          boshlanganVaqt: serverTimestamp(),
-          holati: "jarayonda",
-          togriSoni: 0,
-          jamiSavol: tartib.length,
-          javoblar: [],
-          savolTartibi: tartib,
-          variantTartiblari: variantlar,
-        };
-        const urinishRef = await addDoc(collection(db, "urinishlar"), yangiUrinish);
-
-        // Jon kamaytirish — faqat YANGI test boshlaganda (davom ettirishda emas).
-        const sana = jonSanasi();
-        await setDoc(
-          doc(db, "jonlar", jonHujjatId(user.uid, sana)),
-          { studentId: user.uid, sana, ishlatilgan: increment(1) },
-          { merge: true }
-        );
-
-        if (bekor) return;
-        setUrinishId(urinishRef.id);
-        setSavolTartibi(tartib);
-        setVariantTartiblari(variantlar);
-        setSavollarMap(map);
-        setJavoblar([]);
-        setTogriSoni(0);
-        setPhase("test");
       } catch {
         if (!bekor) setPhase("error");
       }
@@ -160,73 +75,49 @@ export default function StudentTestPage({ params }) {
       bekor = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mavzuId, user.uid]);
+  }, [mavzuId, user]);
 
-  async function davomEttirish() {
-    if (!pendingUrinish) return;
-    setPhase("checking");
-    try {
-      const savolIds = pendingUrinish.savolTartibi || [];
-      const docs = await Promise.all(savolIds.map((id) => getDoc(doc(db, "savollar", id))));
-      const map = {};
-      docs.forEach((d) => {
-        if (d.exists()) map[d.id] = { id: d.id, ...d.data() };
-      });
-
-      setUrinishId(pendingUrinish.id);
-      setSavolTartibi(savolIds);
-      setVariantTartiblari(pendingUrinish.variantTartiblari || {});
-      setSavollarMap(map);
-      setJavoblar(pendingUrinish.javoblar || []);
-      setTogriSoni(pendingUrinish.togriSoni || 0);
-      setPhase("test");
-    } catch {
-      setPhase("error");
-    }
+  function davomEttirish() {
+    setPhase("test");
   }
 
   async function javobTanlash(displeyIndeks) {
-    if (tanlangan !== null) return; // bu savolga allaqachon javob berilgan
+    if (tanlangan !== null || yuborilmoqda) return;
     setTanlangan(displeyIndeks);
-  }
-
-  async function keyingisi() {
-    const joriyIndex = javoblar.length;
-    const savolId = savolTartibi[joriyIndex];
-    const savol = savollarMap[savolId];
-    const tartib = variantTartiblari[savolId];
-    const aslIndeks = tartib[tanlangan];
-    const togrimi = aslIndeks === savol.togriJavobIndex;
-
-    const yangiJavoblar = [...javoblar, aslIndeks];
-    const yangiTogriSoni = togrimi ? togriSoni + 1 : togriSoni;
-    const oxirgimi = yangiJavoblar.length >= savolTartibi.length;
-
+    setYuborilmoqda(true);
     try {
-      await updateDoc(doc(db, "urinishlar", urinishId), {
-        javoblar: yangiJavoblar,
-        togriSoni: yangiTogriSoni,
-        ...(oxirgimi ? { holati: "tugallangan" } : {}),
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/student/test/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          urinishId,
+          savolIndex: joriyIndex,
+          tanlanganDisplayIndex: displeyIndeks,
+        }),
       });
-      // Test tugagan bo'lsa — shu urinishdagi to'g'ri javoblar soni
-      // "umumiy ball"ga qo'shiladi (0-QISM 11-band: Akkountda ko'rinadigan
-      // umumiy ball). Qayta ishlangan testlar ham hisoblanadi — mashq
-      // qilishni rag'batlantiradi.
-      if (oxirgimi) {
-        await updateDoc(doc(db, "users", user.uid), {
-          umumiyBali: increment(yangiTogriSoni),
-        });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setPhase("error");
+        return;
       }
+      setNatija(data);
+      setTogriSoni(data.togriSoni);
     } catch {
       setPhase("error");
+    } finally {
+      setYuborilmoqda(false);
+    }
+  }
+
+  function keyingisi() {
+    if (natija?.oxirgimi) {
+      setPhase("result");
       return;
     }
-
-    setJavoblar(yangiJavoblar);
-    setTogriSoni(yangiTogriSoni);
+    setJoriyIndex((i) => i + 1);
     setTanlangan(null);
-
-    if (oxirgimi) setPhase("result");
+    setNatija(null);
   }
 
   if (phase === "checking") {
@@ -277,8 +168,7 @@ export default function StudentTestPage({ params }) {
     return (
       <main className="mx-auto max-w-md p-6 text-center">
         <p className="mb-4 text-gray-600">
-          Sizda &quot;{mavzu?.nomi}&quot; mavzusi bo&apos;yicha tugallanmagan test bor. Davom
-          ettirasizmi?
+          Sizda bu mavzu bo&apos;yicha tugallanmagan test bor. Davom ettirasizmi?
         </p>
         <div className="flex justify-center gap-3">
           <Link
@@ -300,14 +190,13 @@ export default function StudentTestPage({ params }) {
   }
 
   if (phase === "result") {
-    const jami = savolTartibi.length;
-    const foiz = jami ? Math.round((togriSoni / jami) * 100) : 0;
+    const foiz = jamiSavol ? Math.round((togriSoni / jamiSavol) * 100) : 0;
     return (
       <main className="mx-auto max-w-md p-6 text-center">
         <h1 className="mb-2 text-2xl font-bold">Natija</h1>
         <p className="mb-6 text-5xl font-bold text-primary">{foiz}%</p>
         <p className="mb-6 text-gray-600">
-          {togriSoni}/{jami} to&apos;g&apos;ri
+          {togriSoni}/{jamiSavol} to&apos;g&apos;ri
         </p>
         <Link
           href="/student"
@@ -320,27 +209,22 @@ export default function StudentTestPage({ params }) {
   }
 
   // phase === "test"
-  const joriyIndex = javoblar.length;
-  const savolId = savolTartibi[joriyIndex];
-  const savol = savollarMap[savolId];
-  const tartib = variantTartiblari[savolId] || [0, 1, 2, 3];
-  const javobBerilgan = tanlangan !== null;
+  const savol = savollar[joriyIndex];
+  const javobBerilgan = natija !== null;
 
   return (
     <main className="mx-auto max-w-lg p-6">
       <p className="mb-4 text-sm text-gray-400">
-        Savol {joriyIndex + 1} / {savolTartibi.length}
+        Savol {joriyIndex + 1} / {savollar.length}
       </p>
       <h1 className="mb-6 text-xl font-semibold">{savol?.matn}</h1>
 
       <div className="flex flex-col gap-3">
-        {tartib.map((aslIndeks, displeyIndeks) => {
-          const matn = savol?.variantlar?.[aslIndeks];
+        {savol?.variantlar.map((matn, displeyIndeks) => {
           let holatClass = "border-gray-200 bg-white hover:border-secondary";
 
           if (javobBerilgan) {
-            const toGriMi = aslIndeks === savol.togriJavobIndex;
-            if (toGriMi) {
+            if (displeyIndeks === natija.togriDisplayIndex) {
               holatClass = "border-primary bg-primary/10 text-primary";
             } else if (displeyIndeks === tanlangan) {
               holatClass = "border-red-400 bg-red-50 text-red-500";
@@ -351,9 +235,9 @@ export default function StudentTestPage({ params }) {
 
           return (
             <button
-              key={aslIndeks}
+              key={displeyIndeks}
               type="button"
-              disabled={javobBerilgan}
+              disabled={javobBerilgan || yuborilmoqda}
               onClick={() => javobTanlash(displeyIndeks)}
               className={`rounded-xl2 border px-4 py-3 text-left font-medium transition ${holatClass}`}
             >

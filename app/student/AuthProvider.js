@@ -3,18 +3,21 @@
 // app/student/AuthProvider.js
 // O'quvchi paneli uchun auth guard: faqat kirgan va role === "student"
 // bo'lgan foydalanuvchilar app/student/** ichidagi sahifalarni ko'ra oladi.
-// Joriy foydalanuvchi (Firebase Auth user) Context orqali pastki
-// sahifalarga uzatiladi. users hujjati (userData) VA bugungi qolgan jonlar
-// soni REALTIME kuzatiladi (onSnapshot) — shuning uchun, masalan, test
-// tugab "umumiy ball" yangilanganda yoki jon kamayganda, boshqa sahifaga
-// o'tilganda ham (sahifani qayta yuklamasdan) darhol yangi qiymat ko'rinadi.
+// Joriy foydalanuvchi (Firebase Auth user) va uning Firestore hujjati
+// (userData, realtime) Context orqali pastki sahifalarga uzatiladi.
+//
+// Qolgan jonlar soni endi /api/student/hearts orqali (server, Admin SDK)
+// olinadi — jonlar kolleksiyasi client'dan endi umuman o'qilmaydi/
+// yozilmaydi (0-QISM xavfsizlik yaxshilanishi: savollar/urinishlar/jonlar
+// faqat serverda ishlaydi). Shuning uchun bu yerda realtime emas, "mount"da
+// va refreshHearts() chaqirilganda yangilanadi (masalan test boshlangач).
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { KUNLIK_JON_SONI, jonHujjatId, jonSanasi } from "@/lib/heartsHelpers";
+import { KUNLIK_JON_SONI } from "@/lib/heartsHelpers";
 
 const StudentAuthContext = createContext(null);
 
@@ -58,15 +61,24 @@ export default function StudentAuthProvider({ children }) {
     return unsubscribe;
   }, [user, router]);
 
+  async function refreshHearts() {
+    if (!user) return;
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/student/hearts", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setQolganJon(data.qolganJon);
+    } catch {
+      // jim — header shunchaki eski qiymatni ko'rsatib turadi
+    }
+  }
+
   useEffect(() => {
-    if (!user) return undefined;
-    const sana = jonSanasi();
-    const ref = doc(db, "jonlar", jonHujjatId(user.uid, sana));
-    const unsubscribe = onSnapshot(ref, (snap) => {
-      const ishlatilgan = snap.exists() ? snap.data().ishlatilgan || 0 : 0;
-      setQolganJon(Math.max(0, KUNLIK_JON_SONI - ishlatilgan));
-    });
-    return unsubscribe;
+    if (user) refreshHearts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // userData endi realtime (onSnapshot) kuzatilgani uchun qo'lda qayta
@@ -88,7 +100,9 @@ export default function StudentAuthProvider({ children }) {
   }
 
   return (
-    <StudentAuthContext.Provider value={{ user, userData, qolganJon, refreshUserData, logout }}>
+    <StudentAuthContext.Provider
+      value={{ user, userData, qolganJon, refreshHearts, refreshUserData, logout }}
+    >
       {children}
     </StudentAuthContext.Provider>
   );

@@ -114,7 +114,22 @@ Ishlaydigan qismlar (1–4-PROMPT):
   - `app/api/admin/mavzular` (GET/POST) va `app/api/admin/savollar` (GET/POST) + `app/api/admin/savollar/[id]` (PATCH/DELETE) — barchasi Admin SDK orqali, `requireAdmin` bilan himoyalangan.
 
 **MVP cheklovlari (bilib qo'ying):**
-- `savollar` kolleksiyasi client tarafdan to'g'ridan-to'g'ri o'qiladi, shuning uchun `togriJavobIndex` ham brauzerga tushadi (texnik bilimi bor o'quvchi DevTools orqali ko'rishi mumkin). Sodda ichki test tizimi uchun bu qabul qilingan MVP darajasidagi murosa.
+- ~~`savollar` kolleksiyasi client tarafdan to'g'ridan-to'g'ri o'qiladi...~~ — **tuzatildi**, quyida qarang.
 - 0-QISM sxemasida `maxfiySoz` "faqat teacher uchun" deb belgilangan, shuning uchun mustaqil o'quvchi ro'yxatdan o'tishda bu so'ralmaydi — admin sahifasida mustaqil o'quvchilar uchun bu maydon "belgilanmagan" ko'rinadi. Bu promtlar to'plamidagi spec bo'shlig'i (parolni unutgan mustaqil o'quvchini admin hozircha faqat ism-familiya bo'yicha aniqlab, boshqa yo'l bilan tasdiqlashi kerak bo'ladi).
 
 Hali TODO (ixtiyoriy, keyingi qadamlar): eski `app/teacher/classes` va `app/teacher/students` sahifalarini olib tashlash/qayta yo'naltirish (3-PROMPT'dan qolgan, ishlatilmaydi); haqiqiy loyihada `npm install` + `npm run dev` bilan mahalliy sinov (bu suhbatda internet cheklangani uchun bajarilmadi, faqat kod ko'rib chiqildi).
+
+## Xavfsizlik yaxshilanishi: test mexanizmi serverga ko'chirildi
+
+Ilgari `savollar`, `urinishlar` va `jonlar` kolleksiyalari client Firestore SDK orqali to'g'ridan-to'g'ri o'qilar/yozilardi — bu degani `togriJavobIndex` (to'g'ri javob) ham brauzerga tushardi (DevTools orqali ko'rinardi). Endi bularning barchasi FAQAT serverda (Admin SDK) ishlaydi:
+
+- `lib/testEngine.js` — aralashtirish, jon o'qish, "xavfsiz" (to'g'ri javobsiz) savollar ro'yxatini qurish.
+- `lib/apiAuth.js` — `requireStudent()` qo'shildi (Firebase ID token orqali, `requireTeacher` bilan bir xil naqsh).
+- `app/api/student/dashboard` (GET) — mavzular + eng yuqori foizlar + qolgan jon, bitta so'rovda.
+- `app/api/student/hearts` (GET) — faqat qolgan jon (header uchun yengil).
+- `app/api/student/test/start` (POST) — yangi test boshlaydi yoki tugallanmaganini davom ettiradi; javobda **hech qachon** to'g'ri javob yo'q.
+- `app/api/student/test/answer` (POST) — bitta savolga javobni serverda tekshiradi, faqat SHU savol uchun (javobdan keyin) to'g'ri/noto'g'ri va to'g'ri variant pozitsiyasini qaytaradi.
+- `app/student/page.js`, `app/student/test/[mavzuId]/page.js`, `app/student/AuthProvider.js` — endi Firestore'ga emas, shu API'larga murojaat qiladi.
+- `firestore.rules` — `savollar`, `urinishlar`, `jonlar` endi client uchun to'liq yopiq (`allow read, write: if false`); faqat Admin SDK (server) kira oladi. `mavzular` o'zgarmadi (nomi/tartibi sezgir emas).
+
+Natija: o'quvchi DevTools yoki tarmoq so'rovlarini kuzatsa ham, to'g'ri javobni javob berishdan oldin hech qanday yo'l bilan ko'ra olmaydi.
