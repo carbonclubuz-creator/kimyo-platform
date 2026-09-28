@@ -39,6 +39,7 @@ export default function TeacherClassPage({ params }) {
 
   const [showAdd, setShowAdd] = useState(false);
   const [confirmRemoveUid, setConfirmRemoveUid] = useState(null);
+  const [hashtegCopied, setHashtegCopied] = useState(false);
 
   // Sinfni tekshirish: shu ustozga tegishlimi.
   useEffect(() => {
@@ -56,6 +57,45 @@ export default function TeacherClassPage({ params }) {
       active = false;
     };
   }, [id, user.uid]);
+
+  // Hashtegi hali yo'q (hashteg joriy etilgunga qadar yaratilgan) sinfga
+  // server noyob hashteg beradi.
+  useEffect(() => {
+    if (!classInfo || classInfo.hashteg) return;
+    let active = true;
+    (async () => {
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch("/api/teacher/classes", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ classId: id }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (active && res.ok && data.hashteg) {
+          setClassInfo((c) => (c ? { ...c, hashteg: data.hashteg } : c));
+        }
+      } catch {
+        // jim — hashteg keyingi ochilishda qayta uriniladi
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [classInfo, id, user]);
+
+  async function copyHashteg() {
+    try {
+      await navigator.clipboard.writeText(classInfo.hashteg);
+      setHashtegCopied(true);
+      setTimeout(() => setHashtegCopied(false), 1500);
+    } catch {
+      // Clipboard mavjud bo'lmasa jim o'tkazamiz.
+    }
+  }
 
   // O'quvchilar ro'yxati (real vaqtda yangilanadi).
   useEffect(() => {
@@ -113,6 +153,26 @@ export default function TeacherClassPage({ params }) {
           + O&apos;quvchi qo&apos;shish
         </button>
       </div>
+
+      {classInfo.hashteg && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-xl2 border border-gray-200 bg-white px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Sinf hashtegi</p>
+            <p className="font-mono text-xl font-semibold text-gray-900">#{classInfo.hashteg}</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Mustaqil o&apos;quvchi shu kod bilan sinfga qo&apos;shilish so&apos;rovi yuboradi
+              (Xabarlar bo&apos;limiga tushadi).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={copyHashteg}
+            className="shrink-0 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark"
+          >
+            {hashtegCopied ? "Nusxalandi!" : "Nusxalash"}
+          </button>
+        </div>
+      )}
 
       {students.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl2 border border-dashed border-gray-300 py-16 text-center">
@@ -273,14 +333,20 @@ function StudentRow({ student, onRequestRemove }) {
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            disabled={resetting}
-            className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
-          >
-            {resetting ? "..." : "Yangi parol yarat"}
-          </button>
+          {student.qoshilishUsuli === "hashteg" ? (
+            <span className="text-xs text-gray-400" title="Parolni faqat o'quvchi so'rov yuborganda (Xabarlar orqali) yangilash mumkin">
+              Hashteg orqali
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={resetting}
+              className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {resetting ? "..." : "Yangi parol yarat"}
+            </button>
+          )}
           {!editing ? (
             <button
               type="button"

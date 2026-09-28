@@ -97,6 +97,9 @@ export async function POST(request) {
       viloyat: teacherData.viloyat || "",
       tuman: teacherData.tuman || "",
       classId,
+      // Qanday qo'shilgani: "ustoz" — parolini ustoz istalgan payt yangilay
+      // oladi; "hashteg" — faqat o'quvchining o'zi so'rov yuborganda.
+      qoshilishUsuli: "ustoz",
       // Ustoz jadvalda istalgan payt ko'ra olishi uchun saqlanadi (ko'z
       // ikonkasi bilan yashirin/ko'rsatilgan) — akkountni ustoz o'zi
       // o'quvchisi uchun yaratadi va boshqaradi.

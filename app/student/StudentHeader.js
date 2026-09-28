@@ -29,6 +29,14 @@ export default function StudentHeader() {
         <span className="text-sm text-gray-600">
           {userData?.ism} {userData?.familiya}
         </span>
+        {!userData?.classId && (
+          <Link
+            href="/student/join"
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+          >
+            Sinfga qo&apos;shilish
+          </Link>
+        )}
         <Link
           href="/student/rating"
           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"

@@ -22,6 +22,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
+  // Hashteg orqali sinfga qo'shilgan o'quvchi uchun: parolni tiklash so'rovi
+  // ustozning Xabarlariga tushadi (login + maxfiy so'z bilan).
+  const [showReset, setShowReset] = useState(false);
+  const [resetLogin, setResetLogin] = useState("");
+  const [resetSoz, setResetSoz] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetError, setResetError] = useState("");
+
+  async function handleResetRequest(e) {
+    e.preventDefault();
+    setResetMsg("");
+    setResetError("");
+    if (!resetLogin.trim() || !resetSoz.trim()) {
+      setResetError("Login va maxfiy so'zni kiriting");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const res = await fetch("/api/auth/parol-sorovi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: resetLogin, maxfiySoz: resetSoz }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setResetError(data.error || "Xatolik yuz berdi");
+        return;
+      }
+      setResetMsg(
+        "Agar ma'lumotlar to'g'ri bo'lsa, so'rov ustozingizga yuborildi. Ustoz yangi parolni sizga yetkazadi."
+      );
+      setResetSoz("");
+    } catch {
+      setResetError("Server bilan bog'lanishda xatolik");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -94,7 +134,44 @@ export default function LoginPage() {
           Parolni unutdingizmi?
         </button>
         {showHelp && (
-          <p className="mt-2 text-gray-500">Ustoz yoki admin bilan bog&apos;laning.</p>
+          <div className="mt-2 flex flex-col gap-2 text-gray-500">
+            <p>Ustoz yoki admin bilan bog&apos;laning.</p>
+            <button
+              type="button"
+              onClick={() => setShowReset((v) => !v)}
+              className="text-secondary underline"
+            >
+              Hashteg orqali sinfga qo&apos;shilganmisiz? Ustozga so&apos;rov yuborish
+            </button>
+          </div>
+        )}
+
+        {showHelp && showReset && (
+          <form onSubmit={handleResetRequest} className="mt-3 flex flex-col gap-2 text-left">
+            <input
+              type="text"
+              placeholder="Login"
+              value={resetLogin}
+              onChange={(e) => setResetLogin(e.target.value)}
+              className="rounded-xl2 border border-gray-300 px-4 py-3"
+            />
+            <input
+              type="text"
+              placeholder="Maxfiy so'z"
+              value={resetSoz}
+              onChange={(e) => setResetSoz(e.target.value)}
+              className="rounded-xl2 border border-gray-300 px-4 py-3"
+            />
+            {resetError && <p className="text-sm text-red-500">{resetError}</p>}
+            {resetMsg && <p className="text-sm text-green-700">{resetMsg}</p>}
+            <button
+              type="submit"
+              disabled={resetLoading}
+              className="rounded-xl2 border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {resetLoading ? "Yuborilmoqda..." : "So'rov yuborish"}
+            </button>
+          </form>
         )}
       </div>
     </main>

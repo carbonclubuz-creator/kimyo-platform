@@ -23,6 +23,13 @@ export interface UserDoc {
   /** Faqat student uchun — qaysi sinfga tegishli */
   classId: string | null;
   /**
+   * Faqat student uchun, sinfga qanday qo'shilgani: "ustoz" — ustoz o'zi
+   * qo'shgan (parolini ustoz istalgan payt yangilay oladi); "hashteg" —
+   * mustaqil o'quvchi hashteg orqali qo'shilgan (parolni ustoz FAQAT
+   * o'quvchi so'rov yuborganda yangilaydi). Faqat serverda yoziladi.
+   */
+  qoshilishUsuli?: "ustoz" | "hashteg";
+  /**
    * Faqat ustoz tomonidan yaratilgan o'quvchilar uchun — joriy parol ochiq
    * matnda saqlanadi, chunki ustoz uni istalgan payt sinf jadvalida ko'ra
    * olishi kerak (ko'z ikonkasi bilan yashirin/ko'rsatilgan). Faqat
@@ -38,6 +45,36 @@ export interface ClassDoc {
   id: string;
   nomi: string; // masalan "10-A"
   teacherId: string; // users collection'dagi UID
+  /** Noyob 6 xonali raqam — mustaqil o'quvchi shu kod bilan qo'shilish so'rovi yuboradi */
+  hashteg?: string;
+  createdAt: Timestamp;
+}
+
+export type XabarTuri = "sinfga_qoshilish" | "parol_tiklash";
+
+/**
+ * messages kolleksiyasi — ustozning Xabarlari (faqat server orqali).
+ * Faqat kutilayotgan xabarlar saqlanadi: qabul/rad/bajarildi bo'lganda
+ * hujjat o'chiriladi. ID: `join_{studentUid}` yoki `reset_{studentUid}`.
+ */
+export interface XabarDoc {
+  tur: XabarTuri;
+  teacherId: string;
+  studentId: string;
+  studentIsm: string;
+  studentFamiliya: string;
+  classId: string;
+  classNomi: string;
+  createdAt: Timestamp;
+}
+
+/** joinRequests kolleksiyasi — ID = o'quvchi UID (bir vaqtda bitta so'rov) */
+export interface JoinRequestDoc {
+  studentId: string;
+  classId: string;
+  classNomi: string;
+  teacherId: string;
+  holati: "kutilmoqda" | "rad_etildi";
   createdAt: Timestamp;
 }
 

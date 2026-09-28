@@ -44,6 +44,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }
 
+  // Hashteg orqali qo'shilgan mustaqil o'quvchining parolini ustoz so'rovsiz
+  // o'zgartira olmaydi (0-QISM 3-band) — faqat o'quvchi o'zi so'rov yuborganda,
+  // Xabarlar bo'limi orqali (app/api/teacher/messages/[id]).
+  if (studentData.qoshilishUsuli === "hashteg") {
+    return NextResponse.json(
+      { error: "Bu o'quvchining parolini faqat u so'rov yuborganda (Xabarlar orqali) yangilash mumkin" },
+      { status: 403 }
+    );
+  }
+
   const newPassword = generatePassword();
   await adminAuth.updateUser(studentUid, { password: newPassword });
   await adminDb.collection("users").doc(studentUid).update({ currentPassword: newPassword });

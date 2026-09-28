@@ -8,14 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  addDoc,
-  collection,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useTeacherAuth } from "@/app/teacher/AuthProvider";
 import Modal from "@/components/Modal";
@@ -80,13 +73,14 @@ export default function TeacherDashboardPage() {
       )}
 
       {showCreate && (
-        <CreateClassModal teacherUid={user.uid} onClose={() => setShowCreate(false)} />
+        <CreateClassModal onClose={() => setShowCreate(false)} />
       )}
     </main>
   );
 }
 
-function CreateClassModal({ teacherUid, onClose }) {
+function CreateClassModal({ onClose }) {
+  const { user } = useTeacherAuth();
   const [nomi, setNomi] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -103,11 +97,22 @@ function CreateClassModal({ teacherUid, onClose }) {
 
     setSaving(true);
     try {
-      await addDoc(collection(db, "classes"), {
-        nomi: trimmed,
-        teacherId: teacherUid,
-        createdAt: serverTimestamp(),
+      // Sinf serverda yaratiladi — unga noyob 6 xonali hashteg beriladi.
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/teacher/classes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ nomi: trimmed }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Sinf yaratishda xatolik yuz berdi");
+        setSaving(false);
+        return;
+      }
       onClose();
     } catch {
       setError("Sinf yaratishda xatolik yuz berdi");
