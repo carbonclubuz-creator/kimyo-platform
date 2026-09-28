@@ -8,11 +8,14 @@
 
 import { useEffect, useState } from "react";
 import { useAdminAuth } from "@/app/admin/AdminAuthProvider";
+import FaylOrqaliForma from "./FaylOrqaliForma";
 
 const BOSH_FORMA = { matn: "", variantlar: ["", "", "", ""], togriJavobIndex: 0 };
 
 export default function AdminQuestionsPage() {
   const { fetchAdmin } = useAdminAuth();
+
+  const [rejim, setRejim] = useState("qolda"); // "qolda" | "fayl"
 
   const [mavzular, setMavzular] = useState(null); // null = yuklanmoqda
   const [mavzuXato, setMavzuXato] = useState("");
@@ -182,6 +185,31 @@ export default function AdminQuestionsPage() {
     <main className="mx-auto max-w-3xl p-6">
       <h1 className="mb-6 text-2xl font-bold">Savollar</h1>
 
+      <div className="mb-6 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setRejim("qolda")}
+          className={`rounded-xl2 px-4 py-2 text-sm font-semibold ${
+            rejim === "qolda" ? "bg-primary text-white" : "border border-gray-300 text-gray-600"
+          }`}
+        >
+          Qo&apos;lda kiritish
+        </button>
+        <button
+          type="button"
+          onClick={() => setRejim("fayl")}
+          className={`rounded-xl2 px-4 py-2 text-sm font-semibold ${
+            rejim === "fayl" ? "bg-primary text-white" : "border border-gray-300 text-gray-600"
+          }`}
+        >
+          Fayl orqali qo&apos;shish
+        </button>
+      </div>
+
+      {rejim === "fayl" && <FaylOrqaliForma />}
+
+      {rejim === "qolda" && (
+        <>
       {mavzuXato && <p className="mb-4 text-sm text-red-500">{mavzuXato}</p>}
 
       <div className="mb-6 flex flex-col gap-3 rounded-xl2 border border-gray-200 bg-white p-5 sm:flex-row sm:items-end">
@@ -328,6 +356,8 @@ export default function AdminQuestionsPage() {
               </div>
             ))}
           </div>
+        </>
+      )}
         </>
       )}
     </main>

@@ -72,18 +72,19 @@ export async function POST(request) {
     javoblar: yangiJavoblar,
     togriSoni: yangiTogriSoni,
   };
-  if (oxirgimi) yangilash.holati = "tugallangan";
+  if (oxirgimi) {
+    yangilash.holati = "tugallangan";
+    // Reyting/umumiy ball davr bo'yicha (Bugungi/Kechagi/Haftalik) to'g'ri
+    // hisoblanishi uchun tugallangan vaqt kerak (lib/reytingHelpers.js).
+    yangilash.tugallanganVaqt = FieldValue.serverTimestamp();
+  }
 
   await urinishRef.update(yangilash);
 
-  if (oxirgimi) {
-    // Test tugadi — shu urinishdagi to'g'ri javoblar soni "umumiy ball"ga
-    // qo'shiladi (0-QISM 11-band). Qayta ishlangan testlar ham hisoblanadi.
-    await adminDb
-      .collection("users")
-      .doc(studentUid)
-      .update({ umumiyBali: FieldValue.increment(yangiTogriSoni) });
-  }
+  // Eslatma: "umumiy ball" endi bu yerda oshirilmaydi (eski usul har
+  // qayta ishlashda ham qo'shib borar edi — 0-QISM 6.4-band qoidasiga
+  // zid edi). U endi /api/student/dashboard va /api/student/rating'da
+  // "har mavzudan faqat eng yuqori natija" qoidasi bilan jonli hisoblanadi.
 
   return NextResponse.json({
     ok: true,

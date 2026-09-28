@@ -6,7 +6,7 @@
 // o'zgartirish formasi (login HECH QACHON o'zgarmaydi — 0-QISM 5-band).
 // "Chiqish" tugmasi.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useStudentAuth } from "@/app/student/AuthProvider";
@@ -15,6 +15,31 @@ import { VILOYATLAR } from "@/lib/viloyatlar";
 
 export default function StudentAccountPage() {
   const { user, userData, refreshUserData, logout } = useStudentAuth();
+
+  // "Umumiy ball" endi Firestore'dagi xom maydondan emas, serverda
+  // Reyting bilan bir xil qoida bo'yicha (har mavzudan faqat eng yuqori
+  // natija) hisoblangan holda /api/student/dashboard'dan olinadi.
+  const [umumiyBall, setUmumiyBall] = useState(null);
+
+  useEffect(() => {
+    let bekor = false;
+    async function yuklash() {
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch("/api/student/dashboard", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!bekor && res.ok) setUmumiyBall(data.umumiyBall ?? 0);
+      } catch {
+        // jim — pastda 0 ko'rsatib turiladi
+      }
+    }
+    yuklash();
+    return () => {
+      bekor = true;
+    };
+  }, [user]);
 
   const [tahrirlash, setTahrirlash] = useState(false);
   const [ism, setIsm] = useState("");
@@ -77,7 +102,7 @@ export default function StudentAccountPage() {
           </p>
 
           <p className="text-sm text-gray-400">Umumiy ball</p>
-          <p className="mb-4 text-lg font-semibold text-primary">{userData?.umumiyBali ?? 0}</p>
+          <p className="mb-4 text-lg font-semibold text-primary">{umumiyBall ?? 0}</p>
 
           <p className="text-sm text-gray-400">Viloyat</p>
           <p className="mb-4 text-lg font-semibold">{userData?.viloyat}</p>

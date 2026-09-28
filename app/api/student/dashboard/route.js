@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/apiAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { qolganJonniOl } from "@/lib/testEngine";
+import { davrBoyichaBalllar, davrOraligi } from "@/lib/reytingHelpers";
 
 export const runtime = "nodejs";
 
@@ -41,5 +42,13 @@ export async function GET(request) {
     engYuqoriFoiz: engYuqoriFoizlar[d.id] ?? null,
   }));
 
-  return NextResponse.json({ mavzular, qolganJon });
+  // "Umumiy ball" (Akkount sahifasi uchun) — Reyting bilan bir xil qoida:
+  // har mavzudan faqat eng yuqori natija, davrsiz (0-QISM 6.4-band).
+  const umumiyBallMap = davrBoyichaBalllar(
+    urinishSnap.docs.map((d) => d.data()),
+    davrOraligi("umumiy")
+  );
+  const umumiyBall = umumiyBallMap.get(studentUid) || 0;
+
+  return NextResponse.json({ mavzular, qolganJon, umumiyBall });
 }

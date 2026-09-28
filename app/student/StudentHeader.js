@@ -30,6 +30,12 @@ export default function StudentHeader() {
           {userData?.ism} {userData?.familiya}
         </span>
         <Link
+          href="/student/rating"
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          Reyting
+        </Link>
+        <Link
           href="/student/account"
           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
         >
