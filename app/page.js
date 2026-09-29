@@ -8,9 +8,9 @@ export default function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-      <h1 className="text-3xl font-bold text-primary">Kimyo Platformasi</h1>
+      <h1 className="text-3xl font-bold text-primary">BirKuch</h1>
       <p className="max-w-md text-gray-600">
-        Duolingo uslubidagi kimyo ta&apos;lim platformasi — MVP.
+        Duolingo uslubidagi ta&apos;lim platformasi.
       </p>
 
       {!showRoleChoice ? (

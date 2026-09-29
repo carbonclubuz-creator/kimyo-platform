@@ -102,11 +102,17 @@ export interface UrinishDoc {
   studentId: string;
   mavzuId: string;
   boshlanganVaqt: Timestamp;
+  /** Faqat tugallangan urinishda — oxirgi savolga javob berilgan payt (serverda yoziladi) */
+  tugallanganVaqt?: Timestamp;
   holati: UrinishHolati;
   togriSoni: number;
   jamiSavol: number;
   /** Har bir savol uchun tanlangan variant indeksi (0-3) */
   javoblar: number[];
+  /** Urinish boshlanganda aralashtirilgan savol ID'lari tartibi (faqat serverda) */
+  savolTartibi?: string[];
+  /** savolId -> aralashtirilgan variantlarning ASL indekslari [0-3 permutatsiyasi] (faqat serverda) */
+  variantTartiblari?: Record<string, number[]>;
 }
 
 /** jonlar — users sub-document yoki alohida collection */
@@ -114,4 +120,20 @@ export interface JonDoc {
   studentId: string;
   sana: string; // YYYY-MM-DD
   ishlatilgan: number; // 0-5
+}
+
+/**
+ * sozlamalar/bonusJon — bitta hujjat (faqat serverdan o'qiladi/yoziladi,
+ * app/api/admin/bonus). "Faol" = faol === true VA (tugash yo'q YOKI hozir < tugash);
+ * muddat o'qishda tekshiriladi (cron kerak emas).
+ */
+export interface BonusJonDoc {
+  faol: boolean;
+  /** 1–5 */
+  soni: number;
+  /** O'quvchi bosh sahifasidagi e'lon matni, ≤ 80 belgi (ixtiyoriy) */
+  xabar: string;
+  yoqilganVaqt: Timestamp;
+  /** null = qo'lda o'chirilgunicha */
+  tugash: Timestamp | null;
 }

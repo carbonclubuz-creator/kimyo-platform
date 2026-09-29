@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { useStudentAuth } from "@/app/student/AuthProvider";
+import BackLink from "@/components/BackLink";
 
 const SCOPE_TABLARI = [
   { key: "global", label: "Global" },
@@ -22,6 +23,24 @@ const DAVR_TABLARI = [
   { key: "umumiy", label: "Umumiy" },
   { key: "mavzu", label: "Mavzular" },
 ];
+
+// Global va Sinf o'z rangiga ega (Global — yashil, Sinf — ko'k). Ostidagi
+// Haftalik/Bugungi/... bo'limlar shu rangdagi ramka ichida turadi — shunda
+// ular qaysi tabga (Global yoki Sinf) tegishli ekani ko'rinib turadi.
+const SCOPE_USLUB = {
+  global: {
+    tab: "bg-primary text-white",
+    panel: "border-primary",
+    davrFaol: "border-primary bg-primary/10 font-semibold text-primary-dark",
+    tanlov: "focus:border-primary",
+  },
+  sinf: {
+    tab: "bg-secondary text-white",
+    panel: "border-secondary",
+    davrFaol: "border-secondary bg-secondary/10 font-semibold text-secondary",
+    tanlov: "focus:border-secondary",
+  },
+};
 
 export default function RatingPage() {
   const { user } = useStudentAuth();
@@ -88,20 +107,26 @@ export default function RatingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, scope, davr, mavzuId]);
 
+  const uslub = SCOPE_USLUB[scope];
+
   return (
     <main className="mx-auto max-w-2xl p-6">
+      <BackLink href="/student" />
       <h1 className="mb-6 text-2xl font-bold">Reyting</h1>
 
-      <div className="mb-4 flex gap-2">
+      {/* Bosh tablar: Global | Sinf */}
+      <div className="grid grid-cols-2 gap-1" role="tablist" aria-label="Reyting turi">
         {SCOPE_TABLARI.map((t) => (
           <button
             key={t.key}
             type="button"
+            role="tab"
+            aria-selected={scope === t.key}
             onClick={() => setScope(t.key)}
-            className={`rounded-xl2 px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-t-xl2 px-4 py-3 text-base font-bold transition ${
               scope === t.key
-                ? "bg-primary text-white"
-                : "border border-gray-300 text-gray-600 hover:bg-gray-100"
+                ? SCOPE_USLUB[t.key].tab
+                : "bg-gray-200 text-gray-500 hover:bg-gray-300"
             }`}
           >
             {t.label}
@@ -109,36 +134,40 @@ export default function RatingPage() {
         ))}
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {DAVR_TABLARI.map((d) => (
-          <button
-            key={d.key}
-            type="button"
-            onClick={() => setDavr(d.key)}
-            className={`rounded-xl2 px-3 py-1.5 text-sm transition ${
-              davr === d.key
-                ? "bg-secondary text-white"
-                : "border border-gray-300 text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            {d.label}
-          </button>
-        ))}
-      </div>
-
-      {davr === "mavzu" && mavzular.length > 0 && (
-        <select
-          value={mavzuId}
-          onChange={(e) => setMavzuId(e.target.value)}
-          className="mb-4 w-full rounded-xl2 border border-gray-300 px-3 py-2"
-        >
-          {mavzular.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nomi}
-            </option>
+      {/* Tanlangan tabning rangidagi panel: davr bo'limlari va ro'yxat shu ichida */}
+      <div className={`rounded-b-xl2 border-2 bg-white p-4 ${uslub.panel}`}>
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Davr">
+          {DAVR_TABLARI.map((d) => (
+            <button
+              key={d.key}
+              type="button"
+              role="tab"
+              aria-selected={davr === d.key}
+              onClick={() => setDavr(d.key)}
+              className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
+                davr === d.key
+                  ? uslub.davrFaol
+                  : "border-gray-200 text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              {d.label}
+            </button>
           ))}
-        </select>
-      )}
+        </div>
+
+        {davr === "mavzu" && mavzular.length > 0 && (
+          <select
+            value={mavzuId}
+            onChange={(e) => setMavzuId(e.target.value)}
+            className={`mb-4 w-full rounded-xl2 border border-gray-300 px-3 py-2 outline-none ${uslub.tanlov}`}
+          >
+            {mavzular.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nomi}
+              </option>
+            ))}
+          </select>
+        )}
 
       {xato && <p className="mb-4 text-sm text-red-500">{xato}</p>}
 
@@ -181,6 +210,7 @@ export default function RatingPage() {
           ))}
         </ul>
       )}
+      </div>
     </main>
   );
 }

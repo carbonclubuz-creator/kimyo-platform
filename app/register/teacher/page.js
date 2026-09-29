@@ -16,6 +16,7 @@ import {
 } from "@/lib/accountHelpers";
 import { VILOYATLAR } from "@/lib/viloyatlar";
 import CredentialsCard from "@/components/CredentialsCard";
+import BackLink from "@/components/BackLink";
 
 export default function TeacherRegisterPage() {
   const router = useRouter();
@@ -120,6 +121,7 @@ export default function TeacherRegisterPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-8">
+      <BackLink href="/" className="mb-0 self-start" />
       <h1 className="text-2xl font-bold">Ustoz ro&apos;yxatdan o&apos;tishi</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>

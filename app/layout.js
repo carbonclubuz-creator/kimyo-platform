@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Kimyo Platformasi",
-  description: "Duolingo uslubidagi kimyo ta'lim platformasi",
+  title: "BirKuch",
+  description: "BirKuch — Duolingo uslubidagi ta'lim platformasi",
 };
 
 export default function RootLayout({ children }) {

@@ -9,10 +9,10 @@
 // Firestore'da saqlanadi (currentPassword — types.ts'ga qarang).
 
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
 import { requireTeacher } from "@/lib/apiAuth";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { validateIsmFamiliya, generatePassword, loginToAuthEmail } from "@/lib/accountHelpers";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { validateIsmFamiliya } from "@/lib/accountHelpers";
+import { createStudentAccount } from "@/lib/studentAccount";
 
 export const runtime = "nodejs";
 
@@ -49,64 +49,20 @@ export async function POST(request) {
     return NextResponse.json({ error: "Sinf topilmadi" }, { status: 404 });
   }
 
-  const ismCap = ismCheck.value;
-  const familiyaCap = familiyaCheck.value;
-  const password = generatePassword();
-  const base = `${ismCap}${familiyaCap}`;
-
-  let login = base;
-  let userRecord = null;
-  const maxAttempts = 25;
-
-  for (let attempt = 0; attempt <= maxAttempts; attempt += 1) {
-    const email = loginToAuthEmail(login);
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      userRecord = await adminAuth.createUser({ email, password });
-      break;
-    } catch (err) {
-      if (err && err.code === "auth/email-already-exists") {
-        const suffix = String(Math.floor(Math.random() * 100)).padStart(2, "0");
-        login = `${base}${suffix}`;
-      } else {
-        return NextResponse.json(
-          { error: "Akkount yaratishda xatolik yuz berdi" },
-          { status: 500 }
-        );
-      }
-    }
-  }
-
-  if (!userRecord) {
+  let hisob;
+  try {
+    hisob = await createStudentAccount({
+      ismCap: ismCheck.value,
+      familiyaCap: familiyaCheck.value,
+      classId,
+      teacherData,
+    });
+  } catch (err) {
     return NextResponse.json(
-      { error: "Unikal login yaratib bo'lmadi, qayta urinib ko'ring" },
+      { error: err.kod ? err.message : "Akkount yaratishda xatolik yuz berdi" },
       { status: 500 }
     );
   }
 
-  await adminDb
-    .collection("users")
-    .doc(userRecord.uid)
-    .set({
-      uid: userRecord.uid,
-      role: "student",
-      ism: ismCap,
-      familiya: familiyaCap,
-      login,
-      loginLower: login.toLowerCase(),
-      viloyat: teacherData.viloyat || "",
-      tuman: teacherData.tuman || "",
-      classId,
-      // Qanday qo'shilgani: "ustoz" — parolini ustoz istalgan payt yangilay
-      // oladi; "hashteg" — faqat o'quvchining o'zi so'rov yuborganda.
-      qoshilishUsuli: "ustoz",
-      // Ustoz jadvalda istalgan payt ko'ra olishi uchun saqlanadi (ko'z
-      // ikonkasi bilan yashirin/ko'rsatilgan) — akkountni ustoz o'zi
-      // o'quvchisi uchun yaratadi va boshqaradi.
-      currentPassword: password,
-      umumiyBali: 0,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-
-  return NextResponse.json({ uid: userRecord.uid, login, password });
+  return NextResponse.json({ uid: hisob.uid, login: hisob.login, password: hisob.password });
 }

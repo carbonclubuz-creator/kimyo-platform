@@ -6,14 +6,49 @@
 // bilan ishlaydi. MUHIM: server hech qachon to'g'ri javobni oldindan
 // yubormaydi — faqat javob berilgandan KEYIN shu savol uchun natija keladi
 // (0-QISM 7-10-band talablari saqlanadi, endi xavfsiz tarzda).
+//
+// 5B: tepada progress bar (components/TestProgress.js) va motivatsion
+// toast'lar (components/Toast.js): yangi test boshlanganda, savollarning 50%i
+// javoblanganda va natija ekraniga o'tganda — har biri bir urinishda FAQAT
+// bir marta. Testni davom ettirishda boshlanish toasti chiqmaydi, allaqachon
+// o'tilgan 50% belgisi uchun ham chiqmaydi. API o'zgarmagan.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useStudentAuth } from "@/app/student/AuthProvider";
+import BackLink from "@/components/BackLink";
+import Toast from "@/components/Toast";
+import TestProgress from "@/components/TestProgress";
+import { yarmiChegarasi } from "@/lib/testToast";
 
+const TOAST_BOSHLANISH = "Hamma ham boshlay olmaydi";
+const TOAST_YARMI = "Hamma ham yarmiga yetolmaydi";
+const TOAST_TUGASH = "Hamma ham tugatolmaydi";
+
+// Toast tashqi qobiqda turadi — test fazalari (natija ekrani ham) almashganda ham
+// yo'qolib qolmasligi uchun.
 export default function StudentTestPage({ params }) {
+  const [toast, setToast] = useState(null);
+  return (
+    <>
+      <Toast xabar={toast} onYoqol={() => setToast(null)} />
+      <StudentTestIchki params={params} toastKorsat={setToast} />
+    </>
+  );
+}
+
+function StudentTestIchki({ params, toastKorsat }) {
   const { mavzuId } = params;
   const { user, refreshHearts } = useStudentAuth();
+
+  // Har toast bir urinishda faqat bir marta: "urinishId:tur" kalitlari.
+  const korsatilgan = useRef(new Set());
+  function birMartaToast(urinish, tur, matn) {
+    const kalit = `${urinish}:${tur}`;
+    if (korsatilgan.current.has(kalit)) return;
+    korsatilgan.current.add(kalit);
+    if (matn) toastKorsat(matn);
+  }
 
   // "checking" | "no-hearts" | "resume-prompt" | "empty" | "test" | "result" | "error"
   const [phase, setPhase] = useState("checking");
@@ -29,21 +64,35 @@ export default function StudentTestPage({ params }) {
   const [natija, setNatija] = useState(null); // { togrimi, togriDisplayIndex } — javob yuborilgach
   const [yuborilmoqda, setYuborilmoqda] = useState(false);
 
+  // Start so'rovi mavzu uchun BIR MARTA yuboriladi. React Strict Mode (dev)
+  // effektni ikki marta ishga tushiradi; ikkalasi shu bitta so'rov natijasini
+  // kutadi. Aks holda ikkinchi so'rov birinchi yaratgan urinishni "davom
+  // ettirish" deb qaytarardi va headerdagi jon yangilanmay qolardi.
+  const startSorovi = useRef(null); // { mavzuId, promise }
+
   useEffect(() => {
     let bekor = false;
 
+    async function startSoroviniYubor() {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/student/test/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ mavzuId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, data };
+    }
+
     async function boshlash() {
       try {
-        const idToken = await user.getIdToken();
-        const res = await fetch("/api/student/test/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ mavzuId }),
-        });
-        const data = await res.json().catch(() => ({}));
+        if (!startSorovi.current || startSorovi.current.mavzuId !== mavzuId) {
+          startSorovi.current = { mavzuId, promise: startSoroviniYubor() };
+        }
+        const { ok: resOk, data } = await startSorovi.current.promise;
         if (bekor) return;
 
-        if (!res.ok) {
+        if (!resOk) {
           setPhase("error");
           return;
         }
@@ -60,10 +109,18 @@ export default function StudentTestPage({ params }) {
         setWasResumed(data.resumed);
 
         if (data.resumed) {
+          // Davom ettirish: boshlanish toasti chiqmaydi va allaqachon o'tilgan
+          // 50% belgisi uchun ham chiqmaydi (belgilab qo'yamiz).
+          korsatilgan.current.add(`${data.urinishId}:boshlanish`);
+          const chegara = yarmiChegarasi(data.jamiSavol);
+          if (chegara !== null && data.joriyIndex >= chegara) {
+            korsatilgan.current.add(`${data.urinishId}:yarmi`);
+          }
           setPhase("resume-prompt");
         } else {
           refreshHearts(); // 1 jon kamaydi — headerdagi ko'rsatkichni yangilaymiz
           setPhase("test");
+          birMartaToast(data.urinishId, "boshlanish", TOAST_BOSHLANISH);
         }
       } catch {
         if (!bekor) setPhase("error");
@@ -103,6 +160,10 @@ export default function StudentTestPage({ params }) {
       }
       setNatija(data);
       setTogriSoni(data.togriSoni);
+      // Javob berilgan savollar soni = joriyIndex + 1; 50% ga yetganda bir marta.
+      if (joriyIndex + 1 === yarmiChegarasi(data.jamiSavol)) {
+        birMartaToast(urinishId, "yarmi", TOAST_YARMI);
+      }
     } catch {
       setPhase("error");
     } finally {
@@ -113,6 +174,7 @@ export default function StudentTestPage({ params }) {
   function keyingisi() {
     if (natija?.oxirgimi) {
       setPhase("result");
+      birMartaToast(urinishId, "tugash", TOAST_TUGASH);
       return;
     }
     setJoriyIndex((i) => i + 1);
@@ -214,6 +276,11 @@ export default function StudentTestPage({ params }) {
 
   return (
     <main className="mx-auto max-w-lg p-6">
+      <BackLink href="/student">Mavzular</BackLink>
+      <TestProgress
+        javobBerilgan={joriyIndex + (javobBerilgan ? 1 : 0)}
+        jami={savollar.length}
+      />
       <p className="mb-4 text-sm text-gray-400">
         Savol {joriyIndex + 1} / {savollar.length}
       </p>

@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useStudentAuth } from "@/app/student/AuthProvider";
 
 export default function StudentDashboardPage() {
-  const { user } = useStudentAuth();
+  const { user, bonus } = useStudentAuth();
   const [mavzular, setMavzular] = useState(null); // null = yuklanmoqda
   const [xato, setXato] = useState("");
 
@@ -44,6 +44,20 @@ export default function StudentDashboardPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
+      {/* Admin yoqqan bonus jon e'loni — ixcham, mavzular ro'yxatini itarib yubormaydi */}
+      {bonus?.faol && (
+        <div
+          className="mb-4 flex items-center gap-2 rounded-xl2 border border-primary bg-primary/10 px-4 py-2 text-sm"
+          role="status"
+        >
+          <span aria-hidden="true">🎉</span>
+          <p className="min-w-0 text-primary-dark">
+            <span className="font-bold">Bugun +{bonus.soni} bonus jon!</span>
+            {bonus.xabar && <span className="ml-1 text-gray-700">{bonus.xabar}</span>}
+          </p>
+        </div>
+      )}
+
       <h1 className="mb-6 text-2xl font-bold">Mavzular</h1>
 
       {xato && <p className="mb-4 text-sm text-red-500">{xato}</p>}

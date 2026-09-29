@@ -1,19 +1,23 @@
 "use client";
 
 // app/teacher/class/[id]/page.js
-// Sinf ichi sahifasi: shu sinfga tegishli o'quvchilar ro'yxati
-// (Ism-Familiya, Login, Parol — ko'z ikonkasi bilan yashirin/ko'rsatilgan,
-// nusxalash tugmasi), "O'quvchi qo'shish", har bir qator uchun
-// "Yangi parol yarat" va sinfdan chiqarish ("Tahrirlash" → o'chirish →
-// tasdiqlash).
+// Sinf ichi sahifasi. Yuqorida ikki bo'lim: "O'quvchilar" (shu sinfga
+// tegishli o'quvchilar ro'yxati: Ism-Familiya, Login, Parol — ko'z
+// ikonkasi bilan yashirin/ko'rsatilgan, nusxalash tugmasi; "O'quvchi
+// qo'shish", "Ko'plab qo'shish", "Chop etish (PDF)", har bir qator uchun
+// "Yangi parol yarat" va sinfdan chiqarish) va "Statistika" (3-bosqich —
+// ClassStats.js). Bo'lim va statistika filtri URL query'da saqlanadi
+// (?bolim=statistika&davr=...&mavzuId=...), shu sabab individual o'quvchi
+// sahifasidan "Orqaga" qaytganda tab holati saqlanadi.
 //
 // Eslatma: o'quvchi paroli (currentPassword) Firestore'da saqlanadi — ustoz
 // istalgan payt uni jadvalda ko'ra olishi kerak (talab shunday). Bu odatiy
 // "parolni hech qachon ochiq saqlama" qoidasidan chekinish, chunki bu
 // akkountlarni ustoz o'zi o'z o'quvchilari uchun yaratadi va boshqaradi.
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   collection,
   doc,
@@ -28,11 +32,59 @@ import { useTeacherAuth } from "@/app/teacher/AuthProvider";
 import Modal from "@/components/Modal";
 import CredentialsCard from "@/components/CredentialsCard";
 import { validateIsmFamiliya } from "@/lib/accountHelpers";
-import { EyeIcon, EyeOffIcon, CopyIcon } from "@/components/icons";
+import {
+  LoginQiymati,
+  ParolQiymati,
+  ParolYangilashTugmasi,
+  useOquvchiAkkount,
+} from "@/components/OquvchiAkkount";
+import BackLink from "@/components/BackLink";
+import ClassStats from "./ClassStats";
+import ChopEtishTugmasi from "./ChopEtish";
+
+const BOLIMLAR = [
+  { key: "oquvchilar", label: "O'quvchilar" },
+  { key: "statistika", label: "Statistika" },
+];
+const DAVRLAR = ["haftalik", "bugungi", "kechagi", "umumiy", "mavzu"];
+
+/** Bo'lim + statistika filtrini brauzer manziliga (qayta yuklamasdan) yozadi. */
+function manzilniYangila(bolim, davr, mavzuId) {
+  const p = new URLSearchParams();
+  if (bolim === "statistika") {
+    p.set("bolim", "statistika");
+    if (davr) p.set("davr", davr);
+    if (davr === "mavzu" && mavzuId) p.set("mavzuId", mavzuId);
+  }
+  const qs = p.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+}
 
 export default function TeacherClassPage({ params }) {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-3xl p-6">
+          <p className="text-gray-400">Yuklanmoqda...</p>
+        </main>
+      }
+    >
+      <TeacherClassPageIchki params={params} />
+    </Suspense>
+  );
+}
+
+function TeacherClassPageIchki({ params }) {
   const { id } = params;
   const { user } = useTeacherAuth();
+  const qidiruv = useSearchParams();
+
+  // Bo'lim va statistika filtrining boshlang'ich qiymati URL'dan olinadi.
+  const [bolim, setBolim] = useState(
+    qidiruv.get("bolim") === "statistika" ? "statistika" : "oquvchilar"
+  );
+  const boshlangichDavr = DAVRLAR.includes(qidiruv.get("davr")) ? qidiruv.get("davr") : "haftalik";
+  const boshlangichMavzuId = qidiruv.get("mavzuId") || "";
 
   const [classInfo, setClassInfo] = useState(undefined); // undefined=yuklanmoqda, null=topilmadi
   const [students, setStudents] = useState([]);
@@ -139,19 +191,26 @@ export default function TeacherClassPage({ params }) {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <Link href="/teacher" className="text-sm text-secondary underline">
-        ← Sinflar
-      </Link>
+      <BackLink href="/teacher" />
 
-      <div className="mb-6 mt-2 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{classInfo.nomi}</h1>
-        <button
-          type="button"
-          onClick={() => setShowAdd(true)}
-          className="rounded-xl2 bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-dark"
-        >
-          + O&apos;quvchi qo&apos;shish
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="rounded-xl2 bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-dark"
+          >
+            + O&apos;quvchi qo&apos;shish
+          </button>
+          <Link
+            href={`/teacher/class/${id}/ommaviy`}
+            className="rounded-xl2 border border-primary px-4 py-2.5 font-semibold text-primary-dark hover:bg-primary/10"
+          >
+            Ko&apos;plab qo&apos;shish
+          </Link>
+          <ChopEtishTugmasi students={students} sinfNomi={classInfo.nomi} />
+        </div>
       </div>
 
       {classInfo.hashteg && (
@@ -174,7 +233,39 @@ export default function TeacherClassPage({ params }) {
         </div>
       )}
 
-      {students.length === 0 ? (
+      {/* Bo'lim almashtirgichi: O'quvchilar | Statistika */}
+      <div className="mb-4 grid grid-cols-2 gap-1" role="tablist" aria-label="Sinf bo'limi">
+        {BOLIMLAR.map((b) => (
+          <button
+            key={b.key}
+            type="button"
+            role="tab"
+            aria-selected={bolim === b.key}
+            onClick={() => {
+              setBolim(b.key);
+              manzilniYangila(b.key, boshlangichDavr, boshlangichMavzuId);
+            }}
+            className={`rounded-xl2 px-4 py-2.5 text-base font-bold transition ${
+              bolim === b.key
+                ? "bg-secondary text-white"
+                : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+            }`}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+
+      {bolim === "statistika" && (
+        <ClassStats
+          classId={id}
+          boshlangichDavr={boshlangichDavr}
+          boshlangichMavzuId={boshlangichMavzuId}
+          onOzgarish={(davr, mavzuId) => manzilniYangila("statistika", davr, mavzuId)}
+        />
+      )}
+
+      {bolim === "oquvchilar" && (students.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl2 border border-dashed border-gray-300 py-16 text-center">
           <p className="text-gray-500">Bu sinfda hali o&apos;quvchi yo&apos;q.</p>
           <button
@@ -207,7 +298,7 @@ export default function TeacherClassPage({ params }) {
             </tbody>
           </table>
         </div>
-      )}
+      ))}
 
       {showAdd && <AddStudentModal classId={id} onClose={() => setShowAdd(false)} />}
 
@@ -241,112 +332,28 @@ export default function TeacherClassPage({ params }) {
 
 function StudentRow({ student, onRequestRemove }) {
   const { user } = useTeacherAuth();
-  const [showPassword, setShowPassword] = useState(false);
-  const [copiedField, setCopiedField] = useState(null);
+  const h = useOquvchiAkkount(student, user);
   const [editing, setEditing] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [resetError, setResetError] = useState("");
-
-  async function copy(value, field) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 1200);
-    } catch {
-      // Clipboard mavjud bo'lmasa (masalan http muhitida) jim o'tkazamiz.
-    }
-  }
-
-  async function handleResetPassword() {
-    setResetError("");
-    setResetting(true);
-    try {
-      const idToken = await user.getIdToken();
-      const res = await fetch("/api/teacher/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ studentUid: student.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Xatolik");
-      // Firestore onSnapshot yangi parolni o'zi yetkazadi — foydalanuvchi
-      // buni darhol ko'rishi uchun ochiq holatga o'tkazamiz.
-      setShowPassword(true);
-    } catch {
-      setResetError("Parolni yangilab bo'lmadi");
-    } finally {
-      setResetting(false);
-    }
-  }
 
   return (
     <tr className="border-t border-gray-100">
       <td className="px-4 py-3">
-        {student.ism} {student.familiya}
+        <Link
+          href={`/teacher/class/${student.classId}/student/${student.id}?davr=haftalik`}
+          className="hover:text-secondary hover:underline"
+        >
+          {student.ism} {student.familiya}
+        </Link>
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono">{student.login}</span>
-          <button
-            type="button"
-            onClick={() => copy(student.login, "login")}
-            className="text-gray-400 hover:text-gray-600"
-            aria-label="Loginni nusxalash"
-          >
-            <CopyIcon />
-          </button>
-          {copiedField === "login" && <span className="text-xs text-primary">Nusxalandi!</span>}
-        </div>
+        <LoginQiymati student={student} h={h} />
       </td>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono">
-            {student.currentPassword ? (showPassword ? student.currentPassword : "••••••••") : "—"}
-          </span>
-          {student.currentPassword && (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="text-gray-400 hover:text-gray-600"
-                aria-label={showPassword ? "Yashirish" : "Ko'rsatish"}
-              >
-                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-              <button
-                type="button"
-                onClick={() => copy(student.currentPassword, "password")}
-                className="text-gray-400 hover:text-gray-600"
-                aria-label="Parolni nusxalash"
-              >
-                <CopyIcon />
-              </button>
-              {copiedField === "password" && (
-                <span className="text-xs text-primary">Nusxalandi!</span>
-              )}
-            </>
-          )}
-        </div>
+        <ParolQiymati student={student} h={h} />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
-          {student.qoshilishUsuli === "hashteg" ? (
-            <span className="text-xs text-gray-400" title="Parolni faqat o'quvchi so'rov yuborganda (Xabarlar orqali) yangilash mumkin">
-              Hashteg orqali
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={handleResetPassword}
-              disabled={resetting}
-              className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
-            >
-              {resetting ? "..." : "Yangi parol yarat"}
-            </button>
-          )}
+          <ParolYangilashTugmasi student={student} h={h} />
           {!editing ? (
             <button
               type="button"
@@ -374,7 +381,7 @@ function StudentRow({ student, onRequestRemove }) {
             </>
           )}
         </div>
-        {resetError && <p className="mt-1 text-xs text-red-500">{resetError}</p>}
+        {h.resetError && <p className="mt-1 text-xs text-red-500">{h.resetError}</p>}
       </td>
     </tr>
   );

@@ -1,6 +1,6 @@
-# Kimyo Platformasi (MVP)
+# BirKuch (MVP)
 
-Duolingo uslubidagi kimyo ta'lim platformasi. Next.js (App Router) + Firebase + Tailwind CSS, Netlify'da joylashtiriladi.
+Duolingo uslubidagi ta'lim platformasi. Next.js (App Router) + Firebase + Tailwind CSS, Netlify'da joylashtiriladi.
 
 ## Papka tuzilmasi
 
@@ -16,15 +16,23 @@ kimyo-platform/
 │   │   ├── student/page.js          # mustaqil o'quvchi ro'yxatdan o'tishi
 │   │   └── teacher/page.js          # ustoz ro'yxatdan o'tishi
 │   ├── api/
-│   │   └── teacher/
-│   │       ├── students/route.js         # POST — o'quvchi qo'shish (Admin SDK)
-│   │       └── reset-password/route.js   # POST — o'quvchi parolini yangilash (Admin SDK)
+│   │   ├── teacher/
+│   │   │   ├── students/route.js         # POST — o'quvchi qo'shish (Admin SDK)
+│   │   │   ├── students/bulk/route.js    # POST — ommaviy qo'shish (≤10 qator/so'rov, qator bo'yicha natija)
+│   │   │   ├── reset-password/route.js   # POST — o'quvchi parolini yangilash (Admin SDK)
+│   │   │   ├── stats/route.js            # GET — sinf statistikasi (davr/mavzu tablari)
+│   │   │   └── stats/student/route.js    # GET — bitta o'quvchining urinishlar tarixi (faqat ustoz)
+│   │   └── admin/bonus/route.js          # GET/POST — bonus jon (sozlamalar/bonusJon)
 │   ├── teacher/
 │   │   ├── layout.js                # auth guard (role === "teacher") + yuqori panel
 │   │   ├── AuthProvider.js          # auth Context (user, userData, logout)
 │   │   ├── TeacherHeader.js         # yuqori panel (ism, chiqish)
 │   │   ├── page.js                  # ustoz paneli: sinflar ro'yxati + sinf yaratish
-│   │   ├── class/[id]/page.js       # sinf ichi: o'quvchilar, login/parol, parol tiklash
+│   │   ├── class/[id]/page.js       # sinf ichi: O'quvchilar | Statistika bo'limlari, Ko'plab qo'shish, Chop etish
+│   │   ├── class/[id]/ClassStats.js # 5 tabli statistika (Haftalik/Bugungi/Kechagi/Umumiy/Mavzular)
+│   │   ├── class/[id]/ChopEtish.js  # "Chop etish (PDF)" tugmasi (hashteg o'quvchilari o'tkaziladi)
+│   │   ├── class/[id]/ommaviy/page.js            # Ko'plab qo'shish: kiritish → preview → yaratish → natija
+│   │   ├── class/[id]/student/[studentId]/page.js # individual o'quvchi: akkount + urinishlar tarixi
 │   │   ├── classes/page.js          # TODO — keyingi promtda aniqlashtiriladi/olib tashlanadi
 │   │   └── students/page.js         # TODO — keyingi promtda aniqlashtiriladi/olib tashlanadi
 │   ├── student/
@@ -35,17 +43,30 @@ kimyo-platform/
 │   │   └── test/[mavzuId]/page.js   # test ishlash sahifasi (boshlash/davom ettirish, jonlar)
 │   └── admin/
 │       ├── page.js                  # admin — qo'lda parol tiklash
-│       └── questions/page.js        # savollar bazasini boshqarish
+│       ├── questions/page.js        # savollar bazasini boshqarish
+│       └── bonus/page.js            # bonus jon yoqish/o'chirish (tasdiqlash oynasi bilan)
 ├── components/
 │   ├── CredentialsCard.js           # generatsiya qilingan login/parolni ko'rsatish (nusxalash tugmasi)
 │   ├── Modal.js                     # umumiy overlay modal
+│   ├── OquvchiAkkount.js            # login/parol/yangi parol (sinf jadvali va individual sahifa uchun umumiy)
+│   ├── Toast.js                     # to'smaydigan toast (test ichidagi motivatsion matnlar)
+│   ├── TestProgress.js              # test progress bari (🧪 bilan)
 │   └── icons.js                     # kichik SVG ikonkalar (ko'z, nusxalash)
+├── public/fonts/                    # NotoSans-Regular.ttf + NotoSans-Bold.ttf (PDF uchun, qo'lda qo'yiladi)
 ├── lib/
 │   ├── firebase.js                  # Firebase Auth + Firestore + Storage init (client)
 │   ├── firebaseAdmin.js             # Firebase Admin SDK init (faqat server/API route'lar)
 │   ├── apiAuth.js                   # API route'lar uchun "faqat teacher" tekshiruvi
 │   ├── accountHelpers.js            # ism/familiya validatsiyasi, login/parol generatsiyasi, unikal login bilan akkount ochish
-│   ├── heartsHelpers.js             # jonlar (hearts) tizimi — 7:00 chegarali "jon-kuni" hisoblash
+│   ├── heartsHelpers.js             # jonlar (hearts) tizimi — 7:00 (Toshkent) chegarali "jon-kuni" hisoblash
+│   ├── vaqt.js                      # Toshkent vaqti (UTC+5) yordamchilari — server zonasiga bog'liq emas
+│   ├── statistikaHelpers.js         # ustoz statistikasi hisob-kitoblari (toza funksiyalar)
+│   ├── sinfEgaligi.js               # sinf/o'quvchi ustozniki ekanini tekshirish (izolyatsiya)
+│   ├── studentAccount.js            # createStudentAccount() — yakka va ommaviy qo'shish uchun umumiy
+│   ├── ommaviyHelpers.js            # Ko'plab qo'shish: matnni ajratish, validatsiya, takrorlarni topish
+│   ├── pdfVaraqchalar.js            # 3×5 login/parol varaqchalari PDF (jsPDF + Noto Sans)
+│   ├── bonusMantiq.js / bonusHelpers.js  # bonus jon: toza mantiq / Firestore o'qish
+│   ├── testToast.js                 # test toast'lari mantig'i
 │   └── viloyatlar.js                # Viloyat dropdown ro'yxati
 ├── types.ts                         # Firestore kolleksiyalari uchun tip ta'riflari
 ├── firestore.rules                  # MVP Firestore xavfsizlik qoidalari (Firebase konsoliga joylashtiring)
@@ -64,7 +85,7 @@ kimyo-platform/
 ## O'rnatish
 
 ```bash
-npm install
+npm install                        # jspdf ham o'rnatiladi (PDF varaqchalar uchun)
 cp .env.local.example .env.local   # so'ng Firebase konsolidan olingan qiymatlarni to'ldiring
 npm run dev
 ```
@@ -74,6 +95,20 @@ Shuningdek, Firebase konsolida:
 2. **Firestore Database**'ni yarating (agar hali yaratilmagan bo'lsa).
 3. `firestore.rules` faylidagi qoidalarni **Firestore Database > Rules** bo'limiga joylashtiring va nashr qiling — bularsiz ro'yxatdan o'tish/kirish ishlamaydi (Firestore standart holatda barcha so'rovlarni rad etadi).
 4. **Project settings > Service accounts** bo'limidan "Generate new private key" orqali xizmat hisobi (service account) JSON faylini yuklab oling va undagi `project_id` / `client_email` / `private_key` qiymatlarini `.env.local`dagi `FIREBASE_ADMIN_*` o'zgaruvchilariga joylashtiring — bularsiz ustoz o'quvchi qo'sha olmaydi va parol yangilay olmaydi (`app/api/teacher/**`).
+
+### PDF shrifti (4-bosqich — majburiy qo'lda qadam)
+
+"Chop etish (PDF)" Unicode shrift talab qiladi: jsPDF'ning ichki shriftlari `ʻ`/`ʼ` belgilarini
+chiza olmaydi, login esa asl belgilar bilan saqlanadi. Quyidagi ikki faylni **Noto Sans**
+(Google Fonts, OFL litsenziyasi; statik `.ttf`, o'zgaruvchan/`.otf`/`.woff` EMAS) dan olib qo'ying:
+
+```
+public/fonts/NotoSans-Regular.ttf
+public/fonts/NotoSans-Bold.ttf
+```
+
+Fayl topilmasa PDF yaratilmaydi va aniq xato ko'rsatiladi (belgi jimgina `'` ga almashtirilmaydi —
+noto'g'ri login bolani akkountdan qulflab qo'yardi). Ixtiyoriy: `.env.local`da `NEXT_PUBLIC_SITE_URL`.
 
 ## Joylashtirish (Netlify)
 
@@ -112,6 +147,26 @@ Ishlaydigan qismlar (1–4-PROMPT):
   - `app/admin/questions/page.js`: mavzu tanlash (dropdown) yoki yangi mavzu yaratish (nom kiritib — tartib avtomatik hisoblanadi); tanlangan mavzuga savol qo'shish formasi (matn, 4 variant, radio bilan to'g'ri javob).
   - Qo'shilgan savollar ro'yxati shu mavzu ostida ko'rinadi — har biri "Tahrirlash" (forma qayta to'ldiriladi) va "O'chirish" (tasdiqlash bilan) tugmalari bilan.
   - `app/api/admin/mavzular` (GET/POST) va `app/api/admin/savollar` (GET/POST) + `app/api/admin/savollar/[id]` (PATCH/DELETE) — barchasi Admin SDK orqali, `requireAdmin` bilan himoyalangan.
+
+### 3-, 4- va 5-bosqichlar
+
+- **Vaqt zonasi tuzatishi:** `lib/vaqt.js` (Asia/Tashkent, UTC+5, yozgi vaqt yo'q). `davrOraligi()` va
+  `jonSanasi()` endi server zonasiga bog'liq emas: "Bugungi/Kechagi" chegarasi Toshkent 00:00, jonlar
+  yangilanishi Toshkent 07:00 (avval Netlify/UTC'da mos ravishda 05:00 va 12:00 edi).
+  "Haftalik" = oxirgi 7×24 soat.
+- **3 — Ustoz statistikasi:** sinf sahifasida O'quvchilar | Statistika; 5 tab (Reyting bilan bir xil ball
+  qoidasi), test ishlamaganlar 0 ball bilan pastda; urinishlar/tugallangan/tugallanmagan/oxirgi faollik.
+  Ism bosilsa `student/[studentId]` sahifasi (filtr URL query'da: `?davr=...&mavzuId=...`) — akkount +
+  urinishlar tarixi. Faqat ustozga; `/api/student/**` o'zgarmagan. Boshqa ustoz sinfi/o'quvchisi → 404.
+- **4 — Ommaviy qo'shish + PDF:** `class/[id]/ommaviy` (kiritish → preview → yaratish, 10 tadan bo'lak,
+  "Qayta urinish" faqat yaratilmaganlarga; "Hammasini nusxalash" ataylab yo'q). 3×5 PDF varaqchalar
+  (`lib/pdfVaraqchalar.js`), sinf sahifasida ham "Chop etish (PDF)" (hashteg o'quvchilari o'tkaziladi).
+  Akkount yaratish `lib/studentAccount.js`ga chiqarildi (yakka route xulqi o'zgarmagan).
+- **5A — Bonus jon:** admin `/admin/bonus`dan +1…+5 jon (muddat: ertaga 07:00 gacha / 3 kun / qo'lda).
+  Hujjat `sozlamalar/bonusJon` (faqat server). `qolgan = max(0, 5 + bonus − ishlatilgan)`; header `x/jami`,
+  bosh sahifada e'lon banneri.
+- **5B — Test ichida:** progress bar + 3 ta motivatsion toast (boshlanish / 50% / tugash), har biri
+  urinishda bir marta; davom ettirishda boshlanish va o'tilgan 50% toasti chiqmaydi.
 
 **MVP cheklovlari (bilib qo'ying):**
 - ~~`savollar` kolleksiyasi client tarafdan to'g'ridan-to'g'ri o'qiladi...~~ — **tuzatildi**, quyida qarang.

@@ -4,7 +4,7 @@
 // O'quvchi Akkount sahifasi (0-QISM 11-band, 5-PROMPT):
 // Ism, Familiya, umumiy bali ko'rsatiladi. "Tahrirlash" — Ism/Familiya/Viloyat
 // o'zgartirish formasi (login HECH QACHON o'zgarmaydi — 0-QISM 5-band).
-// "Chiqish" tugmasi.
+// "Chiqish" faqat Tahrirlash ichida (eng pastda, tasdiq bilan).
 
 import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
@@ -12,6 +12,8 @@ import { db } from "@/lib/firebase";
 import { useStudentAuth } from "@/app/student/AuthProvider";
 import { validateIsmFamiliya } from "@/lib/accountHelpers";
 import { VILOYATLAR } from "@/lib/viloyatlar";
+import BackLink from "@/components/BackLink";
+import Modal from "@/components/Modal";
 
 export default function StudentAccountPage() {
   const { user, userData, refreshUserData, logout } = useStudentAuth();
@@ -48,6 +50,7 @@ export default function StudentAccountPage() {
   const [tuman, setTuman] = useState("");
   const [xato, setXato] = useState("");
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
+  const [chiqishTasdiq, setChiqishTasdiq] = useState(false);
 
   function tahrirlashniOchish() {
     setIsm(userData?.ism || "");
@@ -92,6 +95,7 @@ export default function StudentAccountPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
+      <BackLink href="/student" />
       <h1 className="mb-6 text-2xl font-bold">Akkount</h1>
 
       {!tahrirlash && (
@@ -117,13 +121,6 @@ export default function StudentAccountPage() {
               className="rounded-xl2 border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-100"
             >
               Tahrirlash
-            </button>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-xl2 border border-gray-300 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
-            >
-              Chiqish
             </button>
           </div>
         </div>
@@ -192,6 +189,44 @@ export default function StudentAccountPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* "Chiqish" ataylab faqat Tahrirlash ichida, eng pastda va tasdiq bilan:
+          parol esdan chiqsa qayta kirish qiyin, shuning uchun tasodifan bosilmasin. */}
+      {tahrirlash && (
+        <div className="mt-6 rounded-xl2 border border-gray-200 bg-white p-5">
+          <button
+            type="button"
+            onClick={() => setChiqishTasdiq(true)}
+            className="rounded-xl2 border border-red-300 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50"
+          >
+            Akkountdan chiqish
+          </button>
+        </div>
+      )}
+
+      {chiqishTasdiq && (
+        <Modal title="Ishonchingiz komilmi?" onClose={() => setChiqishTasdiq(false)}>
+          <p className="mb-4 text-sm text-gray-600">
+            Akkountdan chiqsangiz, qayta kirish uchun login va parol kerak bo&apos;ladi.
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setChiqishTasdiq(false)}
+              className="flex-1 rounded-xl2 border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              Qolish
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex-1 rounded-xl2 bg-red-500 px-4 py-2.5 font-semibold text-white hover:bg-red-600"
+            >
+              Ha, chiqish
+            </button>
+          </div>
+        </Modal>
       )}
     </main>
   );

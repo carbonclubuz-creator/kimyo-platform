@@ -1,10 +1,11 @@
 // app/api/student/hearts/route.js
-// GET: faqat qolgan jonlar sonini qaytaradi — StudentHeader har sahifada
-// buni chaqiradi (yengil, mavzular ro'yxatini qayta yuklamaydi).
+// GET: qolgan jonlar, jami jon (5 + bonus) va bonus e'lonini qaytaradi —
+// StudentHeader har sahifada buni chaqiradi (yengil, mavzular ro'yxatini
+// qayta yuklamaydi).
 
 import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/apiAuth";
-import { qolganJonniOl } from "@/lib/testEngine";
+import { jonHolatiniOl } from "@/lib/testEngine";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,6 @@ export async function GET(request) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const qolganJon = await qolganJonniOl(authResult.studentUid);
-  return NextResponse.json({ qolganJon });
+  const { qolganJon, jamiJon, bonus } = await jonHolatiniOl(authResult.studentUid);
+  return NextResponse.json({ qolganJon, jamiJon, bonus });
 }

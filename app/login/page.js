@@ -12,6 +12,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { loginToAuthEmail } from "@/lib/accountHelpers";
+import BackLink from "@/components/BackLink";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,6 +95,7 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-8">
+      <BackLink href="/" className="mb-0 self-start" />
       <h1 className="text-2xl font-bold">Kirish</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">

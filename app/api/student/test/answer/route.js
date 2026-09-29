@@ -79,7 +79,17 @@ export async function POST(request) {
     yangilash.tugallanganVaqt = FieldValue.serverTimestamp();
   }
 
-  await urinishRef.update(yangilash);
+  if (oxirgimi) {
+    // Urinishni "tugallangan" qilish va faol ko'rsatkichni o'chirish BITTA
+    // batch'da — ikkalasi birga bajariladi yoki hech biri. Shunda keyingi
+    // safar shu mavzuni boshlash to'g'ri "yangi" deb aniqlanadi.
+    const batch = adminDb.batch();
+    batch.update(urinishRef, yangilash);
+    batch.delete(adminDb.collection("faolUrinishlar").doc(`${studentUid}_${urinish.mavzuId}`));
+    await batch.commit();
+  } else {
+    await urinishRef.update(yangilash);
+  }
 
   // Eslatma: "umumiy ball" endi bu yerda oshirilmaydi (eski usul har
   // qayta ishlashda ham qo'shib borar edi — 0-QISM 6.4-band qoidasiga

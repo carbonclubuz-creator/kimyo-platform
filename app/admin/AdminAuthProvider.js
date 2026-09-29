@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-const SESSION_KEY = "kimyo_admin_parol";
+const SESSION_KEY = "birkuch_admin_parol";
 const AdminAuthContext = createContext(null);
 
 export function useAdminAuth() {

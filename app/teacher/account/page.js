@@ -11,6 +11,7 @@ import { db } from "@/lib/firebase";
 import { useTeacherAuth } from "@/app/teacher/AuthProvider";
 import { validateIsmFamiliya } from "@/lib/accountHelpers";
 import { VILOYATLAR } from "@/lib/viloyatlar";
+import BackLink from "@/components/BackLink";
 
 export default function TeacherAccountPage() {
   const { user, userData, refreshUserData, logout } = useTeacherAuth();
@@ -90,6 +91,7 @@ export default function TeacherAccountPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
+      <BackLink href="/teacher" />
       <h1 className="mb-6 text-2xl font-bold">Akkount</h1>
 
       {!tahrirlash && (

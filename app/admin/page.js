@@ -83,13 +83,16 @@ export default function AdminUsersPage() {
         value={qidiruv}
         onChange={(e) => setQidiruv(e.target.value)}
         placeholder="Ism yoki familiya bo'yicha qidirish..."
-        className="mb-4 w-full rounded-xl2 border border-gray-300 px-3 py-2"
+        className={`mb-4 w-full rounded-xl2 border border-gray-300 px-3 py-2 ${
+          tanlangan ? "hidden sm:block" : ""
+        }`}
       />
 
       {royxatXato && <p className="mb-4 text-sm text-red-500">{royxatXato}</p>}
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <div className="flex flex-col gap-2">
+        {/* Telefonda: foydalanuvchi tanlansa ro'yxat yashiriladi va "Orqaga" tugmasi chiqadi */}
+        <div className={`flex-col gap-2 ${tanlangan ? "hidden sm:flex" : "flex"}`}>
           {users === null && <p className="text-gray-400">Yuklanmoqda...</p>}
           {users !== null && filtrlangan.length === 0 && (
             <p className="text-gray-500">Hech kim topilmadi.</p>
@@ -120,6 +123,20 @@ export default function AdminUsersPage() {
 
         <div>
           {!tanlangan && <p className="text-gray-400">Ro&apos;yxatdan foydalanuvchi tanlang.</p>}
+
+          {tanlangan && (
+            <button
+              type="button"
+              onClick={() => {
+                setTanlangan(null);
+                setYangiParol(null);
+              }}
+              className="mb-4 inline-flex items-center gap-1.5 rounded-xl2 border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 sm:hidden"
+            >
+              <span aria-hidden="true">←</span>
+              Orqaga
+            </button>
+          )}
 
           {tanlangan && (
             <div className="rounded-xl2 border border-gray-200 bg-white p-5">

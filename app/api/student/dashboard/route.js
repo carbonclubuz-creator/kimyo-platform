@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { requireStudent } from "@/lib/apiAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { qolganJonniOl } from "@/lib/testEngine";
+import { jonHolatiniOl } from "@/lib/testEngine";
 import { davrBoyichaBalllar, davrOraligi } from "@/lib/reytingHelpers";
 
 export const runtime = "nodejs";
@@ -19,10 +19,10 @@ export async function GET(request) {
   }
   const { studentUid } = authResult;
 
-  const [mavzuSnap, urinishSnap, qolganJon] = await Promise.all([
+  const [mavzuSnap, urinishSnap, jonHolati] = await Promise.all([
     adminDb.collection("mavzular").orderBy("tartib").get(),
     adminDb.collection("urinishlar").where("studentId", "==", studentUid).get(),
-    qolganJonniOl(studentUid),
+    jonHolatiniOl(studentUid),
   ]);
 
   const engYuqoriFoizlar = {};
@@ -50,5 +50,6 @@ export async function GET(request) {
   );
   const umumiyBall = umumiyBallMap.get(studentUid) || 0;
 
-  return NextResponse.json({ mavzular, qolganJon, umumiyBall });
+  const { qolganJon, jamiJon, bonus } = jonHolati;
+  return NextResponse.json({ mavzular, qolganJon, jamiJon, bonus, umumiyBall });
 }

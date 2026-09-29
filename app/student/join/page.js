@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useStudentAuth } from "@/app/student/AuthProvider";
+import BackLink from "@/components/BackLink";
 
 export default function StudentJoinPage() {
   const { user, userData } = useStudentAuth();
@@ -98,6 +99,7 @@ export default function StudentJoinPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
+      <BackLink href="/student" />
       <h1 className="mb-6 text-2xl font-bold">Sinfga qo&apos;shilish</h1>
 
       {holat.sinfda && (

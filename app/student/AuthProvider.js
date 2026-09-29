@@ -35,6 +35,9 @@ export default function StudentAuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [qolganJon, setQolganJon] = useState(KUNLIK_JON_SONI);
+  // Jami jon (5 + admin yoqqan bonus) va bonus e'loni (5A).
+  const [jamiJon, setJamiJon] = useState(KUNLIK_JON_SONI);
+  const [bonus, setBonus] = useState({ faol: false, soni: 0, xabar: "" });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -71,6 +74,8 @@ export default function StudentAuthProvider({ children }) {
       if (!res.ok) return;
       const data = await res.json();
       setQolganJon(data.qolganJon);
+      if (typeof data.jamiJon === "number") setJamiJon(data.jamiJon);
+      if (data.bonus) setBonus(data.bonus);
     } catch {
       // jim — header shunchaki eski qiymatni ko'rsatib turadi
     }
@@ -101,7 +106,7 @@ export default function StudentAuthProvider({ children }) {
 
   return (
     <StudentAuthContext.Provider
-      value={{ user, userData, qolganJon, refreshHearts, refreshUserData, logout }}
+      value={{ user, userData, qolganJon, jamiJon, bonus, refreshHearts, refreshUserData, logout }}
     >
       {children}
     </StudentAuthContext.Provider>

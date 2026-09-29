@@ -8,9 +8,9 @@
 //     nusxalash bilan) + "Bajarildi" (xabarni ro'yxatdan olib tashlaydi).
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useTeacherAuth } from "@/app/teacher/AuthProvider";
 import CredentialsCard from "@/components/CredentialsCard";
+import BackLink from "@/components/BackLink";
 
 function xabarlarOzgardi() {
   window.dispatchEvent(new Event("xabarlar-ozgardi"));
@@ -45,10 +45,8 @@ export default function TeacherInboxPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Link href="/teacher" className="text-sm text-secondary underline">
-        ← Sinflar
-      </Link>
-      <h1 className="mb-6 mt-2 text-2xl font-bold">Xabarlar</h1>
+      <BackLink href="/teacher" />
+      <h1 className="mb-6 text-2xl font-bold">Xabarlar</h1>
 
       {xato && <p className="mb-4 text-sm text-red-500">{xato}</p>}
       {xabarlar === null && !xato && <p className="text-gray-400">Yuklanmoqda...</p>}

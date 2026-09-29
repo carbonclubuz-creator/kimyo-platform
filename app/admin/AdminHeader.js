@@ -2,7 +2,7 @@
 
 // app/admin/AdminHeader.js
 // Admin bo'limi yuqori paneli: "Foydalanuvchilar" (parol tiklash, 6-PROMPT)
-// va "Savollar" (test kontenti, 7-PROMPT) o'rtasida navigatsiya + Chiqish.
+// "Savollar" (test kontenti, 7-PROMPT) va "Bonus jon" (5A) o'rtasida navigatsiya + Chiqish.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,9 @@ export default function AdminHeader() {
         </Link>
         <Link href="/admin/questions" className={tabClass(pathname === "/admin/questions")}>
           Savollar
+        </Link>
+        <Link href="/admin/bonus" className={tabClass(pathname === "/admin/bonus")}>
+          Bonus jon
         </Link>
       </div>
       <button

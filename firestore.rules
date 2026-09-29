@@ -92,6 +92,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Sozlamalar (masalan sozlamalar/bonusJon — admin yoqadigan bonus jon) faqat
+    // serverda (app/api/admin/bonus, o'quvchi route'lari — Admin SDK) o'qiladi/yoziladi.
+    // Pastdagi umumiy taqiqdan baribir yopiq, lekin niyat aniq ko'rinsin.
+    match /sozlamalar/{sozlamaId} {
+      allow read, write: if false;
+    }
+
+    // Poyga holatidan himoya kolleksiyalari — faqat serverda (Admin SDK):
+    // `loginlar` — band qilingan loginlar (lib/studentAccount.js),
+    // `faolUrinishlar` — (o'quvchi+mavzu) bo'yicha jarayondagi urinish
+    // ko'rsatkichi (app/api/student/test/start va answer).
+    match /loginlar/{loginId} {
+      allow read, write: if false;
+    }
+    match /faolUrinishlar/{faolId} {
+      allow read, write: if false;
+    }
+
     // Boshqa har qanday hujjat — standart holatda rad etiladi.
     match /{document=**} {
       allow read, write: if false;

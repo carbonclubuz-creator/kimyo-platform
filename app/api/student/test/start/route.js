@@ -6,8 +6,10 @@
 // - Tugallanmagan ("jarayonda") urinish bo'lsa: uni qaytaradi, jon olinmaydi.
 // - Aks holda: jon 0 bo'lsa { ok:false, reason:"no-hearts" }, savollar
 //   bo'lmasa { ok:false, reason:"empty" } qaytariladi.
-// - Yangi boshlashda: savollar va variantlar aralashtiriladi, urinish
-//   hujjati yoziladi, 1 jon kamayadi (0-QISM 7-8-band).
+// - Yangi boshlashda: urinish hujjati, `faolUrinishlar` ko'rsatkichi va jon
+//   kamayishi BITTA Firestore transaksiyasida yoziladi (poyga holatidan
+//   himoya: React Strict Mode yoki ikki marta bosishda 2 urinish/2 jon
+//   bo'lmaydi).
 
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
@@ -31,19 +33,80 @@ export async function POST(request) {
     return NextResponse.json({ error: "mavzuId ko'rsatilmagan" }, { status: 400 });
   }
 
-  // Composite index shart bo'lmasligi uchun faqat studentId bo'yicha
-  // so'raymiz, qolganini serverda filtrlaymiz.
-  const urinishlarSnap = await adminDb
-    .collection("urinishlar")
-    .where("studentId", "==", studentUid)
-    .get();
-  const jarayondaDoc = urinishlarSnap.docs.find((d) => {
-    const u = d.data();
-    return u.mavzuId === mavzuId && u.holati === "jarayonda";
+  // --- Tranzaksiyadan TASHQARIDA tayyorlanadigan narsalar ---
+  // Jon va savollar shu yerda o'qiladi (tranzaksiyani yengil ushlash uchun).
+  // Jon tekshiruvi esa faqat "yangi" yo'lda qo'llanadi: aks holda jon 0 bo'lib
+  // qolgan o'quvchi (oxirgi jonini shu testga sarflagan) davom ettira olmasdi.
+  const qolganJon = await qolganJonniOl(studentUid);
+
+  const savollarSnap = await adminDb.collection("savollar").where("mavzuId", "==", mavzuId).get();
+  const mavzuSavollari = {};
+  savollarSnap.docs.forEach((d) => {
+    mavzuSavollari[d.id] = d.data();
+  });
+  const savolTartibi = aralashtir(Object.keys(mavzuSavollari));
+  const variantTartiblari = {};
+  savolTartibi.forEach((id) => {
+    variantTartiblari[id] = aralashtir([0, 1, 2, 3]);
   });
 
-  if (jarayondaDoc) {
-    const urinish = jarayondaDoc.data();
+  const sana = jonSanasi();
+  const faolRef = adminDb.collection("faolUrinishlar").doc(`${studentUid}_${mavzuId}`);
+  const jonRef = adminDb.collection("jonlar").doc(jonHujjatId(studentUid, sana));
+  // ID tranzaksiyadan tashqarida olinadi — tranzaksiya qayta urinsa ham bir xil qoladi.
+  const yangiUrinishRef = adminDb.collection("urinishlar").doc();
+
+  // --- ATOMIK QISM ---
+  const natija = await adminDb.runTransaction(async (tx) => {
+    // Firestore qoidasi: barcha o'qishlar yozishlardan OLDIN.
+    const faolSnap = await tx.get(faolRef);
+    let mavjudUrinishSnap = null;
+    if (faolSnap.exists && faolSnap.data().urinishId) {
+      mavjudUrinishSnap = await tx.get(
+        adminDb.collection("urinishlar").doc(faolSnap.data().urinishId)
+      );
+    }
+
+    if (mavjudUrinishSnap && mavjudUrinishSnap.exists) {
+      const u = mavjudUrinishSnap.data();
+      if (u.studentId === studentUid && u.holati === "jarayonda") {
+        return { turi: "resume", urinishId: mavjudUrinishSnap.id, urinish: u };
+      }
+    }
+    // Ko'rsatkich yo'q yoki eskirgan (urinish tugagan/o'chgan) — yangi yaratamiz.
+
+    if (qolganJon <= 0) return { turi: "no-hearts" };
+    if (savolTartibi.length === 0) return { turi: "empty" };
+
+    tx.set(yangiUrinishRef, {
+      studentId: studentUid,
+      mavzuId,
+      boshlanganVaqt: FieldValue.serverTimestamp(),
+      holati: "jarayonda",
+      togriSoni: 0,
+      jamiSavol: savolTartibi.length,
+      javoblar: [],
+      savolTartibi,
+      variantTartiblari,
+    });
+    tx.set(faolRef, { urinishId: yangiUrinishRef.id });
+    tx.set(
+      jonRef,
+      { studentId: studentUid, sana, ishlatilgan: FieldValue.increment(1) },
+      { merge: true }
+    );
+    return { turi: "yangi" };
+  });
+
+  if (natija.turi === "no-hearts") {
+    return NextResponse.json({ ok: false, reason: "no-hearts" });
+  }
+  if (natija.turi === "empty") {
+    return NextResponse.json({ ok: false, reason: "empty" });
+  }
+
+  if (natija.turi === "resume") {
+    const urinish = natija.urinish;
     const savolIds = urinish.savolTartibi || [];
     const savollarDocs = await Promise.all(
       savolIds.map((id) => adminDb.collection("savollar").doc(id).get())
@@ -56,7 +119,7 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       resumed: true,
-      urinishId: jarayondaDoc.id,
+      urinishId: natija.urinishId,
       savollar: xavfsizSavollarRoyxati(savolIds, urinish.variantTartiblari, savollarMap),
       joriyIndex: (urinish.javoblar || []).length,
       togriSoni: urinish.togriSoni || 0,
@@ -64,49 +127,12 @@ export async function POST(request) {
     });
   }
 
-  const qolganJon = await qolganJonniOl(studentUid);
-  if (qolganJon <= 0) {
-    return NextResponse.json({ ok: false, reason: "no-hearts" });
-  }
-
-  const savollarSnap = await adminDb.collection("savollar").where("mavzuId", "==", mavzuId).get();
-  if (savollarSnap.empty) {
-    return NextResponse.json({ ok: false, reason: "empty" });
-  }
-
-  const savollarMap = {};
-  savollarSnap.docs.forEach((d) => {
-    savollarMap[d.id] = d.data();
-  });
-  const savolTartibi = aralashtir(Object.keys(savollarMap));
-  const variantTartiblari = {};
-  savolTartibi.forEach((id) => {
-    variantTartiblari[id] = aralashtir([0, 1, 2, 3]);
-  });
-
-  const urinishRef = await adminDb.collection("urinishlar").add({
-    studentId: studentUid,
-    mavzuId,
-    boshlanganVaqt: FieldValue.serverTimestamp(),
-    holati: "jarayonda",
-    togriSoni: 0,
-    jamiSavol: savolTartibi.length,
-    javoblar: [],
-    savolTartibi,
-    variantTartiblari,
-  });
-
-  const sana = jonSanasi();
-  await adminDb
-    .collection("jonlar")
-    .doc(jonHujjatId(studentUid, sana))
-    .set({ studentId: studentUid, sana, ishlatilgan: FieldValue.increment(1) }, { merge: true });
-
+  // natija.turi === "yangi"
   return NextResponse.json({
     ok: true,
     resumed: false,
-    urinishId: urinishRef.id,
-    savollar: xavfsizSavollarRoyxati(savolTartibi, variantTartiblari, savollarMap),
+    urinishId: yangiUrinishRef.id,
+    savollar: xavfsizSavollarRoyxati(savolTartibi, variantTartiblari, mavzuSavollari),
     joriyIndex: 0,
     togriSoni: 0,
     jamiSavol: savolTartibi.length,
