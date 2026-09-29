@@ -120,6 +120,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Yangiliklar (3-BOSQICH): adminning va ustozlarning postlari hamda ustozlarning
+    // admin postini sinflariga yuborishi. Hammasi faqat serverda (app/api/admin/yangiliklar,
+    // app/api/teacher/yangiliklar, app/api/student/yangiliklar — Admin SDK) o'qiladi/yoziladi;
+    // client to'g'ridan-to'g'ri o'qimaydi ham, yozmaydi ham.
+    match /yangiliklar/{yangilikId} {
+      allow read, write: if false;
+    }
+    match /yangilikYuborishlar/{yuborishId} {
+      allow read, write: if false;
+    }
+
     // Boshqa har qanday hujjat — standart holatda rad etiladi.
     match /{document=**} {
       allow read, write: if false;

@@ -200,3 +200,14 @@ Natija: o'quvchi DevTools yoki tarmoq so'rovlarini kuzatsa ham, to'g'ri javobni 
 Admin yuqori panelida "Parol so'rovlari" va "Ustozdan xabar" yonida qizil belgi (kutilayotgan/javobsiz soni, `count()` agregatsiyasi bilan — deyarli bepul).
 
 Yangi sozlama: `NEXT_PUBLIC_ADMIN_TELEGRAM` (`.env.local.example`ga qarang). Yangi kolleksiyalar: `parolSorovlari`, `ustozXabarlari` (ikkalasi ham faqat server; `firestore.rules`ga qo'shildi). Yangi Firestore indeks kerak emas.
+
+## 3-bosqich (Yangiliklar) — 3-A: ma'lumot modeli, admin API, admin sahifasi
+
+- Kolleksiyalar (ikkalasi client uchun yopiq, faqat Admin SDK): `yangiliklar/{id}` va
+  `yangilikYuborishlar/{ustozId}_{yangilikId}` (matn nusxalanmaydi — asl hujjatga havola).
+- `lib/yangilikHelpers.js` (matn tekshiruvi 1–4000 belgi, oddiy matn, "tahrirlangan dd.mm.yyyy HH:MM"),
+  `lib/yangilikServer.js` (JSON, sahifalash kursori, tozalash).
+- Admin API: `GET/POST /api/admin/yangiliklar`, `PATCH/DELETE /api/admin/yangiliklar/[id]`;
+  sahifa `/admin/yangiliklar`. Yangi indeks: `yangiliklar` — `muallifRoli` (O'sish) + `yaratilgan` (Kamayish).
+- Admin o'chirilganda post bilan birga uning yuborishlari ham o'chadi; ustoz o'chirilganda uning postlari
+  va yuborishlari ham o'chadi.
