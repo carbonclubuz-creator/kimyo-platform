@@ -7,6 +7,7 @@
 // (app/api/teacher/reset-password) yangilay oladi.
 
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { requireAdmin } from "@/lib/apiAuth";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { generatePassword } from "@/lib/accountHelpers";
@@ -41,6 +42,13 @@ export async function POST(request) {
 
   const newPassword = generatePassword();
   await adminAuth.updateUser(uid, { password: newPassword });
+
+  // Sinfdan chiqarilgan (avval ustoz yaratgan) o'quvchida eski parol matni
+  // `currentPassword`da qolgan bo'lishi mumkin — u endi yaroqsiz, shuning
+  // uchun o'chiramiz (hashteg oqimidagi ustoz tiklashi ham shunday qiladi).
+  if (userData.currentPassword) {
+    await adminDb.collection("users").doc(uid).update({ currentPassword: FieldValue.delete() });
+  }
 
   return NextResponse.json({ password: newPassword });
 }

@@ -3,7 +3,8 @@
 // app/teacher/account/page.js
 // Ustoz Akkount sahifasi (5-PROMPT): Ism, Familiya, Maktab/markaz, jami
 // sinflar/o'quvchilar soni ko'rsatiladi. "Tahrirlash" (student'dagi kabi —
-// Ism/Familiya/Viloyat, login o'zgarmaydi) va "Chiqish" tugmasi.
+// Ism/Familiya/Viloyat, login o'zgarmaydi) va "Chiqish" tugmasi. Pastda
+// "Adminga xabar yuborish" bo'limi: admin javobi Xabarlar (inbox) qismiga keladi.
 
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
@@ -140,6 +141,8 @@ export default function TeacherAccountPage() {
         </div>
       )}
 
+      {!tahrirlash && <AdmingaXabar user={user} />}
+
       {tahrirlash && (
         <form
           onSubmit={saqlash}
@@ -205,5 +208,85 @@ export default function TeacherAccountPage() {
         </form>
       )}
     </main>
+  );
+}
+
+const XABAR_MAX_UZUNLIK = 1000;
+
+/** Ustozdan adminga xabar: matn yoziladi, "Jo'natish" bosiladi. */
+function AdmingaXabar({ user }) {
+  const [matn, setMatn] = useState("");
+  const [yuborilmoqda, setYuborilmoqda] = useState(false);
+  const [xato, setXato] = useState("");
+  const [yuborildi, setYuborildi] = useState(false);
+
+  async function yuborish(e) {
+    e.preventDefault();
+    setXato("");
+    setYuborildi(false);
+    if (!matn.trim()) {
+      setXato("Xabar matnini yozing");
+      return;
+    }
+    setYuborilmoqda(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/teacher/admin-xabar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ matn }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setXato(data.error || "Xatolik yuz berdi");
+        return;
+      }
+      setMatn("");
+      setYuborildi(true);
+    } catch {
+      setXato("Server bilan bog'lanishda xatolik");
+    } finally {
+      setYuborilmoqda(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={yuborish}
+      className="mt-6 flex flex-col gap-3 rounded-xl2 border border-gray-200 bg-white p-5"
+    >
+      <h2 className="text-lg font-semibold">Adminga xabar yuborish</h2>
+      <textarea
+        value={matn}
+        onChange={(e) => {
+          setMatn(e.target.value);
+          setYuborildi(false);
+        }}
+        maxLength={XABAR_MAX_UZUNLIK}
+        rows={4}
+        placeholder="Xabaringizni yozing..."
+        className="w-full rounded-xl2 border border-gray-300 px-3 py-2"
+      />
+      <p className="-mt-2 text-xs text-gray-400">
+        {matn.length}/{XABAR_MAX_UZUNLIK}. Admin javobi &quot;Xabarlar&quot; bo&apos;limingizga
+        tushadi.
+      </p>
+
+      {xato && <p className="text-sm text-red-500">{xato}</p>}
+      {yuborildi && (
+        <p className="text-sm text-green-700">Xabaringiz adminga yuborildi.</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={yuborilmoqda}
+        className="self-start rounded-xl2 bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-dark disabled:opacity-60"
+      >
+        {yuborilmoqda ? "Yuborilmoqda..." : "Jo'natish"}
+      </button>
+    </form>
   );
 }

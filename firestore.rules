@@ -72,6 +72,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Parolni tiklash so'rovlari (mustaqil o'quvchi/ustoz -> admin) va ustozning
+    // adminga yozgan xabarlari faqat serverda (Admin SDK) o'qiladi/yoziladi:
+    // app/api/auth/mustaqil-parol-sorovi, app/api/admin/**, app/api/teacher/admin-xabar.
+    match /parolSorovlari/{sorovId} {
+      allow read, write: if false;
+    }
+    match /ustozXabarlari/{xabarId} {
+      allow read, write: if false;
+    }
+
     // Mavzular — har qanday kirgan foydalanuvchi o'qiy oladi (nomi/tartibi
     // sezgir emas). Savollar, urinishlar va jonlar endi CLIENT'DAN UMUMAN
     // O'QILMAYDI/YOZILMAYDI — barchasi faqat serverda (app/api/student/**,

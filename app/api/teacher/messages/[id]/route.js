@@ -34,6 +34,12 @@ export async function POST(request, { params }) {
   }
   const msg = msgSnap.data();
 
+  // Admin javobida studentId yo'q — unga Qabul/Rad/Yangilash amali bo'lmaydi
+  // (o'chirish uchun DELETE ishlatiladi). Aks holda pastda undefined ID bilan xato chiqardi.
+  if (msg.tur !== "sinfga_qoshilish" && msg.tur !== "parol_tiklash") {
+    return NextResponse.json({ error: "Bu xabarga amal bajarib bo'lmaydi" }, { status: 400 });
+  }
+
   const studentRef = adminDb.collection("users").doc(msg.studentId);
   const joinRef = adminDb.collection("joinRequests").doc(msg.studentId);
 
@@ -119,4 +125,32 @@ export async function POST(request, { params }) {
   }
 
   return NextResponse.json({ error: "Noma'lum xabar turi" }, { status: 400 });
+}
+
+/**
+ * DELETE: ustoz adminning javobini (tur = "admin_javob") o'z inboxidan o'chiradi.
+ * Boshqa turdagi xabarlar (qo'shilish/parol so'rovlari) faqat amal bajarilganda
+ * (Qabul/Rad/Bajarildi) o'chadi, shuning uchun bu yerdan o'chirilmaydi.
+ */
+export async function DELETE(request, { params }) {
+  const authResult = await requireTeacher(request);
+  if (authResult.error) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+  const { teacherUid } = authResult;
+
+  const msgRef = adminDb.collection("messages").doc(params.id);
+  const msgSnap = await msgRef.get();
+  if (!msgSnap.exists || msgSnap.data().teacherId !== teacherUid) {
+    return NextResponse.json({ error: "Xabar topilmadi" }, { status: 404 });
+  }
+  if (msgSnap.data().tur !== "admin_javob") {
+    return NextResponse.json(
+      { error: "Bu so'rovni o'chirib bo'lmaydi — unga amal bajaring" },
+      { status: 400 }
+    );
+  }
+
+  await msgRef.delete();
+  return NextResponse.json({ ok: true });
 }

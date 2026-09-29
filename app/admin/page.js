@@ -8,10 +8,13 @@
 // Ro'yxatda: barcha "teacher" va mustaqil ("student" + classId == null)
 // foydalanuvchilar. Bittasini tanlasa — maxfiySoz ko'rinadi (admin buni
 // Telegram orqali aytilgan javob bilan qo'lda solishtiradi) va "Yangi parol
-// yarat" tugmasi bilan parol tiklanadi.
+// yarat" tugmasi bilan parol tiklanadi. Ustoz yoki mustaqil o'quvchini
+// tasdiqlash oynasi bilan o'chirish mumkin (ustoz o'chirilsa, uning
+// o'quvchilari sinfsiz — "sinfdan chiqarilgan" holatda qoladi).
 
 import { useEffect, useState } from "react";
 import CredentialsCard from "@/components/CredentialsCard";
+import Modal from "@/components/Modal";
 import { useAdminAuth } from "./AdminAuthProvider";
 
 export default function AdminUsersPage() {
@@ -23,6 +26,9 @@ export default function AdminUsersPage() {
   const [tanlangan, setTanlangan] = useState(null);
   const [yangiParol, setYangiParol] = useState(null);
   const [parolYaratilmoqda, setParolYaratilmoqda] = useState(false);
+  const [ochirishTasdiq, setOchirishTasdiq] = useState(false);
+  const [ochirilmoqda, setOchirilmoqda] = useState(false);
+  const [ochirishNatija, setOchirishNatija] = useState("");
 
   useEffect(() => {
     yuklash();
@@ -69,6 +75,37 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function foydalanuvchiniOchirish() {
+    if (!tanlangan) return;
+    setOchirilmoqda(true);
+    setRoyxatXato("");
+    setOchirishNatija("");
+    try {
+      const res = await fetchAdmin(`/api/admin/users/${tanlangan.uid}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRoyxatXato(data.error || "Xatolik yuz berdi");
+        setOchirishTasdiq(false);
+        return;
+      }
+      const ism = `${tanlangan.ism} ${tanlangan.familiya}`;
+      setUsers((royxat) => (royxat || []).filter((u) => u.uid !== tanlangan.uid));
+      setTanlangan(null);
+      setYangiParol(null);
+      setOchirishTasdiq(false);
+      setOchirishNatija(
+        data.role === "teacher"
+          ? `${ism} o'chirildi. ${data.ozodQilingan} ta o'quvchi sinfsiz (mustaqil) qoldi, ${data.sinflarSoni} ta sinf o'chirildi.`
+          : `${ism} o'chirildi.`
+      );
+    } catch {
+      setRoyxatXato("Server bilan bog'lanishda xatolik");
+      setOchirishTasdiq(false);
+    } finally {
+      setOchirilmoqda(false);
+    }
+  }
+
   const filtrlangan = (users || []).filter((u) => {
     if (!qidiruv.trim()) return true;
     const toliqIsm = `${u.ism || ""} ${u.familiya || ""}`.toLowerCase();
@@ -89,6 +126,7 @@ export default function AdminUsersPage() {
       />
 
       {royxatXato && <p className="mb-4 text-sm text-red-500">{royxatXato}</p>}
+      {ochirishNatija && <p className="mb-4 text-sm text-green-700">{ochirishNatija}</p>}
 
       <div className="grid gap-6 sm:grid-cols-2">
         {/* Telefonda: foydalanuvchi tanlansa ro'yxat yashiriladi va "Orqaga" tugmasi chiqadi */}
@@ -171,10 +209,54 @@ export default function AdminUsersPage() {
                   <CredentialsCard login={tanlangan.login} password={yangiParol} />
                 </div>
               )}
+
+              <div className="mt-5 border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setOchirishTasdiq(true)}
+                  className="rounded-xl2 border border-red-300 px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-50"
+                >
+                  {tanlangan.role === "teacher" ? "Ustozni o'chirish" : "O'quvchini o'chirish"}
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {ochirishTasdiq && tanlangan && (
+        <Modal title="Ishonchingiz komilmi?" onClose={() => setOchirishTasdiq(false)}>
+          <p className="mb-2 text-sm text-gray-600">
+            <b>
+              {tanlangan.ism} {tanlangan.familiya}
+            </b>{" "}
+            ({tanlangan.login}) butunlay o&apos;chiriladi.
+          </p>
+          <p className="mb-4 text-sm text-gray-600">
+            {tanlangan.role === "teacher"
+              ? "Ustozning sinflari va xabarlari o'chadi; sinfdagi o'quvchilari esa akkounti, ballari va parollari bilan sinfsiz (mustaqil) o'quvchi bo'lib qoladi."
+              : "O'quvchining akkounti, test natijalari va ballari o'chadi."}{" "}
+            Buni qaytarib bo&apos;lmaydi.
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setOchirishTasdiq(false)}
+              className="flex-1 rounded-xl2 border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="button"
+              disabled={ochirilmoqda}
+              onClick={foydalanuvchiniOchirish}
+              className="flex-1 rounded-xl2 bg-red-500 px-4 py-2.5 font-semibold text-white hover:bg-red-600 disabled:opacity-60"
+            >
+              {ochirilmoqda ? "O'chirilmoqda..." : "Ha, o'chirish"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

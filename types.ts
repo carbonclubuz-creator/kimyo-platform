@@ -50,7 +50,7 @@ export interface ClassDoc {
   createdAt: Timestamp;
 }
 
-export type XabarTuri = "sinfga_qoshilish" | "parol_tiklash";
+export type XabarTuri = "sinfga_qoshilish" | "parol_tiklash" | "admin_javob";
 
 /**
  * messages kolleksiyasi — ustozning Xabarlari (faqat server orqali).
@@ -60,11 +60,46 @@ export type XabarTuri = "sinfga_qoshilish" | "parol_tiklash";
 export interface XabarDoc {
   tur: XabarTuri;
   teacherId: string;
-  studentId: string;
-  studentIsm: string;
-  studentFamiliya: string;
-  classId: string;
-  classNomi: string;
+  /** sinfga_qoshilish / parol_tiklash uchun (admin_javob'da yo'q) */
+  studentId?: string;
+  studentIsm?: string;
+  studentFamiliya?: string;
+  classId?: string;
+  classNomi?: string;
+  /** Faqat admin_javob: adminning javobi (o'zi o'chib ketmaydi, ustoz o'chiradi) */
+  matn?: string;
+  /** Faqat admin_javob: ustozning asl xabari boshi (<= 200 belgi) */
+  asliMatn?: string;
+  /** Faqat admin_javob: ustoz Xabarlar sahifasini ochganmi (qizil belgi uchun) */
+  oqilgan?: boolean;
+  createdAt: Timestamp;
+}
+
+/**
+ * parolSorovlari kolleksiyasi — mustaqil o'quvchi/ustozning admin panelidagi
+ * parol tiklash so'rovi (faqat server). ID = sha1(rol|ism|familiya|viloyat)
+ * — bir odamdan bitta so'rov. Admin "Bajarildi" bosganda o'chadi.
+ */
+export interface ParolSorovDoc {
+  rol: "oquvchi" | "ustoz";
+  ism: string;
+  familiya: string;
+  viloyat: string;
+  createdAt: Timestamp;
+}
+
+/**
+ * ustozXabarlari kolleksiyasi — ustozdan adminga xabar (faqat server).
+ * Admin javobi ustozning `messages` kolleksiyasiga (tur = "admin_javob") yoziladi.
+ */
+export interface UstozXabarDoc {
+  teacherId: string;
+  teacherIsm: string;
+  teacherFamiliya: string;
+  teacherLogin: string;
+  matn: string;
+  javobBerilgan: boolean;
+  javoblar: { matn: string; vaqt: Timestamp }[];
   createdAt: Timestamp;
 }
 

@@ -170,7 +170,7 @@ Ishlaydigan qismlar (1–4-PROMPT):
 
 **MVP cheklovlari (bilib qo'ying):**
 - ~~`savollar` kolleksiyasi client tarafdan to'g'ridan-to'g'ri o'qiladi...~~ — **tuzatildi**, quyida qarang.
-- 0-QISM sxemasida `maxfiySoz` "faqat teacher uchun" deb belgilangan, shuning uchun mustaqil o'quvchi ro'yxatdan o'tishda bu so'ralmaydi — admin sahifasida mustaqil o'quvchilar uchun bu maydon "belgilanmagan" ko'rinadi. Bu promtlar to'plamidagi spec bo'shlig'i (parolni unutgan mustaqil o'quvchini admin hozircha faqat ism-familiya bo'yicha aniqlab, boshqa yo'l bilan tasdiqlashi kerak bo'ladi).
+- ~~Mustaqil o'quvchida maxfiy so'z yo'q~~ — **tuzatildi**: ro'yxatdan o'tishda `maxfiySoz` so'raladi. Sinfdagi (ustoz yaratgan) o'quvchida u bo'lmaydi; ular parolini ustozidan oladi. Ustoz sinfdan chiqargan o'quvchida esa maxfiy so'z bo'lmasligi mumkin (admin panelida "belgilanmagan" ko'rinadi).
 
 Hali TODO (ixtiyoriy, keyingi qadamlar): eski `app/teacher/classes` va `app/teacher/students` sahifalarini olib tashlash/qayta yo'naltirish (3-PROMPT'dan qolgan, ishlatilmaydi); haqiqiy loyihada `npm install` + `npm run dev` bilan mahalliy sinov (bu suhbatda internet cheklangani uchun bajarilmadi, faqat kod ko'rib chiqildi).
 
@@ -188,3 +188,15 @@ Ilgari `savollar`, `urinishlar` va `jonlar` kolleksiyalari client Firestore SDK 
 - `firestore.rules` — `savollar`, `urinishlar`, `jonlar` endi client uchun to'liq yopiq (`allow read, write: if false`); faqat Admin SDK (server) kira oladi. `mavzular` o'zgarmadi (nomi/tartibi sezgir emas).
 
 Natija: o'quvchi DevTools yoki tarmoq so'rovlarini kuzatsa ham, to'g'ri javobni javob berishdan oldin hech qanday yo'l bilan ko'ra olmaydi.
+
+## 1-bosqich: Admin paneli (parol so'rovlari, o'chirish, ustozdan xabar)
+
+**1.1 Mustaqil o'quvchi / ustoz parolni tiklash.** Kirish oynasida "Parolni unutdingizmi?" → Ism, Familiya, Viloyat (o'quvchi yoki ustoz tanlanadi) → "Jo'natish". So'rov `parolSorovlari` kolleksiyasiga tushadi (`app/api/auth/mustaqil-parol-sorovi`; faqat bazada shunday mustaqil o'quvchi/ustoz bor bo'lsagina yoziladi — begona odam ro'yxatni yolg'on so'rovlar bilan to'ldira olmasin, javob esa har doim bir xil), ekranda nusxa qilinadigan matn ("Ali Valiyev, Toshkent shahri"), adminning Telegram havolasi va izoh chiqadi. Admin panelida yangi **Parol so'rovlari** bo'limi (`/admin/parol-sorovlari`): har so'rov ostida bazadan mos foydalanuvchilar (ism/familiya katta-kichik harf va apostrofga e'tiborsiz, viloyat teng, mustaqil o'quvchi yoki ustoz) maxfiy so'zlari bilan ko'rinadi. Admin Telegramda maxfiy so'zni solishtiradi, so'ng "Mavjud parolni ko'rsatish" (saqlangan parol bo'lsa) yoki "Yangilash (yangi parol)" bosadi va "Bajarildi" bilan so'rovni o'chiradi. Hashteg orqali sinfga qo'shilgan o'quvchining eski oqimi (ustozga so'rov) saqlangan.
+
+**1.2 O'chirish.** `/admin`da ustoz yoki mustaqil o'quvchi tasdiqlash oynasi bilan o'chiriladi (`DELETE /api/admin/users/[uid]`). Ustoz o'chirilsa, uning o'quvchilari `classId = null` bo'lib qoladi (ustoz sinfdan chiqargandagi bilan bir xil holat); sinflari, xabarlari va so'rovlari o'chadi. O'quvchi o'chirilsa: urinishlar, jonlar, so'rovlar. Ikkala holatda Firebase Auth akkaunti va login ham bo'shaydi.
+
+**1.3 Ustozdan adminga xabar.** Ustoz Akkount > "Adminga xabar yuborish" (`ustozXabarlari`). Admin `/admin/xabarlar` ("Ustozdan xabar") da javob yozadi; javob ustozning Xabarlar (inbox) qismiga **"Admin"** belgisi bilan tushadi (`messages`, `tur = "admin_javob"`), o'zi o'chib ketmaydi — ustoz o'zi o'chiradi. Yangi (ochilmagan) admin javobi ustoz panelidagi qizil belgini yoqadi, sahifa ochilgach belgi o'chadi.
+
+Admin yuqori panelida "Parol so'rovlari" va "Ustozdan xabar" yonida qizil belgi (kutilayotgan/javobsiz soni, `count()` agregatsiyasi bilan — deyarli bepul).
+
+Yangi sozlama: `NEXT_PUBLIC_ADMIN_TELEGRAM` (`.env.local.example`ga qarang). Yangi kolleksiyalar: `parolSorovlari`, `ustozXabarlari` (ikkalasi ham faqat server; `firestore.rules`ga qo'shildi). Yangi Firestore indeks kerak emas.
