@@ -211,3 +211,20 @@ Yangi sozlama: `NEXT_PUBLIC_ADMIN_TELEGRAM` (`.env.local.example`ga qarang). Yan
   sahifa `/admin/yangiliklar`. Yangi indeks: `yangiliklar` — `muallifRoli` (O'sish) + `yaratilgan` (Kamayish).
 - Admin o'chirilganda post bilan birga uning yuborishlari ham o'chadi; ustoz o'chirilganda uning postlari
   va yuborishlari ham o'chadi.
+
+## 3-bosqich — 3-B: ustoz va o'quvchi qismi
+
+- Ustoz: `/teacher/yangiliklar` (Orqaga tugmasi bilan; `/teacher` da "Mening sinflarim" yonida
+  "Yangiliklar"). "Admindan" — admin postlarini sinflarga yuborish (`yangilikYuborishlar/{ustozId}_{yangilikId}`,
+  matn nusxalanmaydi, qayta yuborilsa ustiga yoziladi, "Yuborishni bekor qilish" hujjatni o'chiradi);
+  "Mening yangiliklarim" — o'z postlarini yaratish/tahrirlash/o'chirish.
+  API: `/api/teacher/yangiliklar` (GET/POST), `/api/teacher/yangiliklar/[id]` (PATCH/DELETE),
+  `/api/teacher/yangiliklar/admindan` (GET), `/api/teacher/yangiliklar/admindan/[id]` (POST/DELETE).
+- O'quvchi: `app/student/page.js` da "Mavzular | Yangiliklar" tablari (`YangiliklarTab.js`, lazy);
+  API `/api/student/yangiliklar` (GET). Sinfdagi o'quvchi: ustozning sinfga yo'naltirilgan postlari +
+  ustoz yuborgan admin postlari; mustaqil o'quvchi: `mustaqilga: true` admin postlari. Sinf ID'si
+  serverda o'quvchining `users` hujjatidan olinadi.
+- Ikki manbani sahifalash: `lib/yangilikFeed.js` (yagona tartib + kursor "sekund:nanosekund:tur:id").
+- Yangi indekslar: `yangiliklar` — `ustozlarga`+`yaratilgan`↓; `muallifId`+`yaratilgan`↓;
+  `mustaqilga`+`yaratilgan`↓; `classIds`(Arrays)+`yaratilgan`↓; `yangilikYuborishlar` —
+  `classIds`(Arrays)+`yuborilgan`↓.

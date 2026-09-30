@@ -5,15 +5,30 @@
 // ENG YUQORI foizi (0-QISM 10-band). Endi to'g'ridan-to'g'ri Firestore
 // o'rniga /api/student/dashboard'dan olinadi (server, Admin SDK) — chunki
 // urinishlar kolleksiyasi endi faqat serverdan o'qiladi/yoziladi.
+// "Mavzular" yonida "Yangiliklar" tabi (3-BOSQICH): birinchi kirganda Mavzular ochiq;
+// Yangiliklar so'rovi faqat tabga BIRINCHI marta bosilganda yuklanadi (lazy).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStudentAuth } from "@/app/student/AuthProvider";
+import YangiliklarTab from "@/app/student/YangiliklarTab";
 
 export default function StudentDashboardPage() {
   const { user, bonus } = useStudentAuth();
   const [mavzular, setMavzular] = useState(null); // null = yuklanmoqda
   const [xato, setXato] = useState("");
+  const [tab, setTab] = useState("mavzular");
+  const [yangiliklarOchilgan, setYangiliklarOchilgan] = useState(false);
+
+  function tabniTanla(nomi) {
+    setTab(nomi);
+    if (nomi === "yangiliklar") setYangiliklarOchilgan(true);
+  }
+
+  const tabClass = (faol) =>
+    `rounded-xl2 px-4 py-2 text-sm font-semibold ${
+      faol ? "bg-primary text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-100"
+    }`;
 
   useEffect(() => {
     let bekor = false;
@@ -58,8 +73,21 @@ export default function StudentDashboardPage() {
         </div>
       )}
 
-      <h1 className="mb-6 text-2xl font-bold">Mavzular</h1>
+      <h1 className="sr-only">Mavzular va yangiliklar</h1>
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button type="button" onClick={() => tabniTanla("mavzular")} className={tabClass(tab === "mavzular")}>
+          Mavzular
+        </button>
+        <button
+          type="button"
+          onClick={() => tabniTanla("yangiliklar")}
+          className={tabClass(tab === "yangiliklar")}
+        >
+          Yangiliklar
+        </button>
+      </div>
 
+      <div className={tab === "mavzular" ? "" : "hidden"}>
       {xato && <p className="mb-4 text-sm text-red-500">{xato}</p>}
 
       {mavzular === null && !xato && <p className="text-gray-400">Yuklanmoqda...</p>}
@@ -88,6 +116,13 @@ export default function StudentDashboardPage() {
             </li>
           ))}
         </ul>
+      )}
+      </div>
+
+      {yangiliklarOchilgan && (
+        <div className={tab === "yangiliklar" ? "" : "hidden"}>
+          <YangiliklarTab />
+        </div>
       )}
     </main>
   );

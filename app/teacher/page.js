@@ -30,8 +30,19 @@ export default function TeacherDashboardPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Mening sinflarim</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="sr-only">Mening sinflarim</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-xl2 bg-primary px-4 py-2.5 font-semibold text-white">
+            Mening sinflarim
+          </span>
+          <Link
+            href="/teacher/yangiliklar"
+            className="rounded-xl2 border border-gray-300 px-4 py-2.5 font-semibold text-gray-600 hover:bg-gray-100"
+          >
+            Yangiliklar
+          </Link>
+        </div>
         <button
           type="button"
           onClick={() => setShowCreate(true)}
